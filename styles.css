@@ -1,0 +1,13 @@
+#title {
+    color: blue;
+}
+#contenedor_header {
+    background-color: aqua;
+    border-radius: 1px;
+}
+.contenedor_contenido {
+    background-color: aliceblue;
+}
+.contenedor_contenido_click {
+    background-color: rgb(208, 68, 98);
+}
