@@ -75,7 +75,7 @@
         .stats {
             display: flex;
             gap: 1rem;
-            margin-top: 1rem;
+            margin-top: 0;
         }
         .stat {
             flex: 1;
@@ -97,8 +97,8 @@
         <input type="file" id="file-input" accept=".xlsx,.xls" />
         <div id="loading">⏳ Cargando Python y procesando... (la primera vez tarda unos segundos)</div>
         <div style="margin-top: 1rem;">
-            <button id="process-btn" py-onclick="procesar_archivo">Procesar archivo</button>
-            <button id="download-btn" py-onclick="descargar_resultado" style="display:none;">⬇️ Descargar resultados</button>
+            <button id="process-btn">Procesar archivo</button>
+            <button id="download-btn" style="display:none;">⬇️ Descargar resultados</button>
         </div>
     </div>
 
@@ -115,24 +115,17 @@
         packages = ["openpyxl"]
     </py-config>
 
-    <py-script>
+    <script type="py">
 import openpyxl
 from io import BytesIO
 from js import document, Uint8Array, window, console
-import json
+from pyodide.ffi import create_proxy
 
-# ---------- Variables globales ----------
+# ---------- Estado global ----------
 resultado_bytes = None
-resumen_filtro1 = []
-resumen_filtro2 = []
 
 
 # ---------- Utilidades ----------
-def log(msg):
-    """Escribe en la consola del navegador."""
-    console.log(msg)
-
-
 def set_status(msg, tipo="ok"):
     el = document.getElementById("status")
     el.innerText = msg
@@ -160,7 +153,7 @@ async def leer_archivo():
 
 # ---------- Lógica principal ----------
 async def procesar_archivo(event=None):
-    global resultado_bytes, resumen_filtro1, resumen_filtro2
+    global resultado_bytes
 
     mostrar_loading(True)
     set_status("⏳ Procesando archivo...", "loading")
@@ -180,7 +173,6 @@ async def procesar_archivo(event=None):
         wb = openpyxl.load_workbook(bytes_io)
         ws = wb.active
 
-        # Definir filtros y columnas deseadas
         columna_filtro1 = "TRAMITE CERRADO/ABIERTO"
         valor_filtro1 = "Tramite en proceso"
 
@@ -192,7 +184,6 @@ async def procesar_archivo(event=None):
 
         columnas_deseadas = ["NOMBRE", "APELLIDO", "FUNCIONARIO"]
 
-        # Identificar índices de columnas
         indices = {}
         filtro_index1 = None
         filtro_index2 = None
@@ -208,35 +199,34 @@ async def procesar_archivo(event=None):
             if cell.value in columnas_deseadas:
                 indices[cell.value] = i
 
-        # Validaciones
         if filtro_index1 is None:
-            raise ValueError(f"No se encontró la columna '{columna_filtro1}'")
+            raise ValueError("No se encontró la columna '" + columna_filtro1 + "'")
         if filtro_index2 is None:
-            raise ValueError(f"No se encontró la columna '{columna_filtro2}'")
+            raise ValueError("No se encontró la columna '" + columna_filtro2 + "'")
         if filtro_index3 is None:
-            raise ValueError(f"No se encontró la columna '{columna_filtro3}'")
+            raise ValueError("No se encontró la columna '" + columna_filtro3 + "'")
 
-        log(f"Columnas encontradas: {indices}")
+        console.log("Columnas encontradas: " + str(indices))
 
-        # ---------- Filtro 1: Tramite en proceso + REMISION ----------
+        # ---------- Filtro 1 ----------
         resumen_filtro1 = []
-        contador1 = 0
         for row in ws.iter_rows(min_row=2, values_only=True):
-            if (row[filtro_index1 - 1] and str(row[filtro_index1 - 1]).strip().upper() == valor_filtro1.upper()
-                and row[filtro_index3 - 1] and str(row[filtro_index3 - 1]).strip().upper() == valor_filtro3.upper()):
-                datos_filtrados = {col: row[idx - 1] for col, idx in indices.items()}
-                resumen_filtro1.append(datos_filtrados)
-                contador1 += 1
+            v1 = row[filtro_index1 - 1]
+            v3 = row[filtro_index3 - 1]
+            if (v1 and str(v1).strip().upper() == valor_filtro1.upper()
+                and v3 and str(v3).strip().upper() == valor_filtro3.upper()):
+                resumen_filtro1.append({col: row[idx - 1] for col, idx in indices.items()})
+        contador1 = len(resumen_filtro1)
 
-        # ---------- Filtro 2: OBSERVACION contiene URGENCIA VITAL + REMISION ----------
+        # ---------- Filtro 2 ----------
         resumen_filtro2 = []
-        contador2 = 0
         for row in ws.iter_rows(min_row=2, values_only=True):
-            if (row[filtro_index2 - 1] and valor_filtro2 in str(row[filtro_index2 - 1]).upper()
-                and row[filtro_index3 - 1] and str(row[filtro_index3 - 1]).strip().upper() == valor_filtro3.upper()):
-                datos_filtrados = {col: row[idx - 1] for col, idx in indices.items()}
-                resumen_filtro2.append(datos_filtrados)
-                contador2 += 1
+            v2 = row[filtro_index2 - 1]
+            v3 = row[filtro_index3 - 1]
+            if (v2 and valor_filtro2 in str(v2).upper()
+                and v3 and str(v3).strip().upper() == valor_filtro3.upper()):
+                resumen_filtro2.append({col: row[idx - 1] for col, idx in indices.items()})
+        contador2 = len(resumen_filtro2)
 
         # ========== GENERAR EXCEL DE SALIDA ==========
         wb_out = openpyxl.Workbook()
@@ -244,7 +234,6 @@ async def procesar_archivo(event=None):
         ws1.title = "Tramite en proceso"
         ws2 = wb_out.create_sheet("Urgencia Vital")
 
-        # Encabezados
         headers = list(indices.keys())
         ws1.append(headers)
         ws2.append(headers)
@@ -258,64 +247,93 @@ async def procesar_archivo(event=None):
         wb_out.save(buffer_out)
         resultado_bytes = buffer_out.getvalue()
 
-        # ========== MOSTRAR RESULTADOS EN PANTALLA ==========
-        stats_html = f"""
-            <div class="stat">
-                <strong>{contador1}</strong>
-                Trámite en proceso (REMISIÓN)
-            </div>
-            <div class="stat">
-                <strong>{contador2}</strong>
-                Urgencia Vital (REMISIÓN)
-            </div>
-        """
+        # ========== ESTADÍSTICAS (sin innerHTML) ==========
         stats_el = document.getElementById("stats")
-        stats_el.innerHTML = stats_html
+        # Limpiar
+        while stats_el.firstChild:
+            stats_el.removeChild(stats_el.firstChild)
+
+        # Primer stat
+        d1 = document.createElement("div"); d1.className = "stat"
+        s1 = document.createElement("strong"); s1.innerText = str(contador1)
+        d1.appendChild(s1)
+        d1.appendChild(document.createTextNode("Trámite en proceso (REMISIÓN)"))
+        stats_el.appendChild(d1)
+
+        # Segundo stat
+        d2 = document.createElement("div"); d2.className = "stat"
+        s2 = document.createElement("strong"); s2.innerText = str(contador2)
+        d2.appendChild(s2)
+        d2.appendChild(document.createTextNode("Urgencia Vital (REMISIÓN)"))
+        stats_el.appendChild(d2)
+
         stats_el.style.display = "flex"
 
-        # Vista previa en texto
+        # ========== VISTA PREVIA EN TEXTO ==========
         lineas = []
         lineas.append("=== FILTRO 1: Trámite en proceso (solo REMISIÓN) ===")
-        lineas.append(f"Total: {contador1}\n")
+        lineas.append("Total: " + str(contador1) + "\n")
         for r in resumen_filtro1[:20]:
             lineas.append(str(r))
         if contador1 > 20:
-            lineas.append(f"... y {contador1 - 20} más (ver Excel descargado)")
+            lineas.append("... y " + str(contador1 - 20) + " más (ver Excel descargado)")
 
-        lineas.append("\n" + "=" * 55 + "\n")
+        lineas.append("")
+        lineas.append("=" * 55)
+        lineas.append("")
         lineas.append("=== FILTRO 2: Observación contiene 'URGENCIA VITAL' (solo REMISIÓN) ===")
-        lineas.append(f"Total: {contador2}\n")
+        lineas.append("Total: " + str(contador2) + "\n")
         for r in resumen_filtro2[:20]:
             lineas.append(str(r))
         if contador2 > 20:
-            lineas.append(f"... y {contador2 - 20} más (ver Excel descargado)")
+            lineas.append("... y " + str(contador2 - 20) + " más (ver Excel descargado)")
 
         set_output("\n".join(lineas))
-        set_status(f"✅ Procesado. {contador1 + contador2} registros encontrados en total.", "ok")
+        set_status("✅ Procesado. " + str(contador1 + contador2) + " registros encontrados en total.", "ok")
         document.getElementById("download-btn").style.display = "inline-block"
 
     except Exception as e:
-        set_status(f"❌ Error: {e}", "error")
+        set_status("❌ Error: " + str(e), "error")
         set_output(str(e))
+        console.error(str(e))
     finally:
         mostrar_loading(False)
 
 
 # ---------- Descargar resultado ----------
 def descargar_resultado(event=None):
+    global resultado_bytes
     if resultado_bytes is None:
         return
-    blob = window.Blob.new(
-        [Uint8Array.new(resultado_bytes)],
-        {"type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}
-    )
-    url = window.URL.createObjectURL(blob)
-    a = document.createElement("a")
-    a.href = url
-    a.download = "resultado_filtrado.xlsx"
-    a.click()
-    window.URL.revokeObjectURL(url)
-    </py-script>
+    try:
+        # Crear Uint8Array desde los bytes de Python
+        from pyodide.ffi import to_js
+        import js
+        arr = Uint8Array.new(len(resultado_bytes))
+        arr.assign(resultado_bytes)
+        blob = js.Blob.new([arr], {"type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"})
+        url = window.URL.createObjectURL(blob)
+        a = document.createElement("a")
+        a.href = url
+        a.download = "resultado_filtrado.xlsx"
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        window.URL.revokeObjectURL(url)
+    except Exception as e:
+        set_status("❌ Error al descargar: " + str(e), "error")
+        console.error(str(e))
+
+
+# ---------- Registrar eventos ----------
+_botón_procesar = document.getElementById("process-btn")
+_botón_procesar.addEventListener("click", create_proxy(procesar_archivo))
+
+_botón_descargar = document.getElementById("download-btn")
+_botón_descargar.addEventListener("click", create_proxy(descargar_resultado))
+
+console.log("✅ App lista. Botones registrados.")
+    </script>
 
 </body>
 </html>
