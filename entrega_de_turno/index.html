@@ -3,536 +3,613 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PDF a Excel - Historia Clínica</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <title>Filtro de Trámites - Excel</title>
+    <link rel="stylesheet" href="https://pyscript.net/releases/2024.1.1/core.css" />
+    <script type="module" src="https://pyscript.net/releases/2024.1.1/core.js"></script>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
-        
         body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-            color: #333;
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 1100px;
+            margin: 2rem auto;
+            padding: 1rem 1.5rem;
+            color: #24292e;
+            background: #f6f8fa;
         }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
+        h1 { margin-bottom: 0.3rem; }
+        h2 { margin-top: 0; font-size: 1.1rem; }
+        .card {
             background: white;
-            border-radius: 16px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            padding: 40px;
-        }
-
-        header { text-align: center; margin-bottom: 30px; }
-        h1 { font-size: 2rem; color: #333; margin-bottom: 8px; }
-        .subtitle { color: #666; font-size: 1rem; }
-
-        /* Campo funcionario */
-        .funcionario-box {
-            background: #f7fafc;
-            border: 2px solid #e2e8f0;
+            border: 1px solid #d0d7de;
             border-radius: 10px;
-            padding: 15px 20px;
-            margin-bottom: 25px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        #file-input {
+            margin: 0.5rem 0;
+            padding: 0.6rem;
+            border: 1px dashed #d0d7de;
+            border-radius: 6px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        button {
+            padding: 0.7rem 1.4rem;
+            background: #2ea44f;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            margin-right: 0.5rem;
+            margin-bottom: 0.4rem;
+        }
+        button:hover { background: #22863a; }
+        button:disabled { background: #94d3a2; cursor: not-allowed; }
+        #download-btn { background: #0366d6; }
+        #download-btn:hover { background: #0250a3; }
+        #copy-btn { background: #6f42c1; }
+        #copy-btn:hover { background: #5a32a3; }
+        .output {
+            background: #0d1117;
+            color: #c9d1d9;
+            padding: 1rem;
+            border-radius: 8px;
+            font-family: 'SF Mono', Consolas, monospace;
+            font-size: 0.88rem;
+            white-space: pre-wrap;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        .turno {
+            background: #ffffff;
+            color: #24292e;
+            padding: 1.2rem;
+            border-radius: 8px;
+            border: 1px solid #d0d7de;
+            font-family: 'SF Mono', Consolas, monospace;
+            font-size: 0.85rem;
+            white-space: pre-wrap;
+            max-height: 700px;
+            overflow-y: auto;
+        }
+        .status {
+            font-weight: 600;
+            margin-bottom: 0.8rem;
+            color: #57606a;
+        }
+        .status.ok { color: #1a7f37; }
+        .status.error { color: #cf222e; }
+        .status.loading { color: #9a6700; }
+        #loading {
+            display: none;
+            color: #9a6700;
+            font-style: italic;
+            margin-top: 0.5rem;
+        }
+        .stats {
             display: flex;
-            align-items: center;
-            gap: 15px;
+            gap: 1rem;
             flex-wrap: wrap;
         }
-
-        .funcionario-box label {
-            font-weight: 600;
-            color: #4a5568;
-            font-size: 0.95rem;
-        }
-
-        .funcionario-box input {
+        .stat {
             flex: 1;
             min-width: 200px;
-            padding: 10px 14px;
-            border: 2px solid #cbd5e0;
-            border-radius: 8px;
-            font-size: 1rem;
-            transition: border-color 0.2s;
+            background: #ddf4ff;
+            border-left: 4px solid #0969da;
+            padding: 0.8rem;
+            border-radius: 6px;
         }
-
-        .funcionario-box input:focus {
-            outline: none;
-            border-color: #667eea;
-        }
-
-        .upload-area {
-            border: 3px dashed #cbd5e0;
-            border-radius: 12px;
-            padding: 50px 20px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            background: #f7fafc;
-        }
-
-        .upload-area:hover, .upload-area.dragover {
-            border-color: #667eea;
-            background: #ebf4ff;
-            transform: translateY(-2px);
-        }
-
-        .upload-content svg { color: #667eea; margin-bottom: 15px; }
-        .upload-content p { font-size: 1.1rem; margin-bottom: 8px; color: #4a5568; }
-        .hint { color: #a0aec0; font-size: 0.9rem; }
-
-        .controls {
-            margin-top: 25px;
+        .stat strong { display: block; font-size: 1.4rem; color: #0969da; }
+        .stat.verde { background: #dafbe1; border-left-color: #2ea44f; }
+        .stat.verde strong { color: #1a7f37; }
+        .stat.naranja { background: #fff8c5; border-left-color: #d4a72c; }
+        .stat.naranja strong { color: #7d4e00; }
+        .stat.morado { background: #f3e5ff; border-left-color: #8250df; }
+        .stat.morado strong { color: #6f42c1; }
+        .config-row {
             display: flex;
-            justify-content: center;
-            gap: 15px;
+            gap: 1rem;
             flex-wrap: wrap;
+            margin: 0.8rem 0;
         }
-
-        .btn-primary, .btn-success, .btn-secondary {
-            padding: 14px 28px;
-            border: none;
-            border-radius: 8px;
-            font-size: 1rem;
+        .config-row label {
+            display: flex;
+            flex-direction: column;
+            font-size: 0.85rem;
             font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s ease;
+            color: #57606a;
+            flex: 1;
+            min-width: 220px;
         }
-
-        .btn-primary { background: #667eea; color: white; }
-        .btn-primary:hover { background: #5568d3; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4); }
-        .btn-primary:disabled { background: #cbd5e0; cursor: not-allowed; transform: none; }
-
-        .btn-success { background: #48bb78; color: white; }
-        .btn-success:hover { background: #38a169; transform: translateY(-2px); }
-
-        .btn-secondary { background: #edf2f7; color: #4a5568; }
-        .btn-secondary:hover { background: #e2e8f0; }
-
-        .status {
-            margin-top: 20px;
-            padding: 12px;
-            border-radius: 8px;
-            text-align: center;
-            display: none;
-        }
-
-        .status.info { background: #ebf8ff; color: #2c5282; display: block; }
-        .status.success { background: #f0fff4; color: #22543d; display: block; }
-        .status.error { background: #fff5f5; color: #742a2a; display: block; }
-
-        .preview { margin-top: 30px; }
-        .preview h2 { margin-bottom: 15px; color: #2d3748; }
-
-        .table-wrapper {
-            overflow: auto;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-        }
-
-        table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
-        table th, table td { padding: 12px 14px; border: 1px solid #e2e8f0; text-align: left; }
-        table th { 
-            background: #667eea; 
-            color: white; 
-            font-weight: 600; 
-            text-transform: uppercase;
-            font-size: 0.72rem;
-            letter-spacing: 0.5px;
-            white-space: nowrap;
-        }
-        table tr:nth-child(even) { background: #f7fafc; }
-        table td { font-weight: 500; color: #2d3748; }
-
-        .actions {
-            margin-top: 20px;
-            display: flex;
-            gap: 12px;
-            justify-content: center;
-            flex-wrap: wrap;
-        }
-
-        .missing { color: #cbd5e0; font-style: italic; font-weight: 400; }
-
-        @media (max-width: 600px) {
-            .container { padding: 20px; }
-            h1 { font-size: 1.5rem; }
-            .actions { flex-direction: column; }
-            .actions button { width: 100%; }
+        .config-row input {
+            margin-top: 0.3rem;
+            padding: 0.5rem;
+            border: 1px solid #d0d7de;
+            border-radius: 6px;
+            font-size: 0.95rem;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>📄 → 📊 Historia Clínica a Excel</h1>
-            <p class="subtitle">Extrae y organiza los datos de la HC para tu Excel maestro</p>
-        </header>
 
-        <!-- Campo funcionario -->
-        <div class="funcionario-box">
-            <label for="funcionarioInput">👤 FUNCIONARIO:</label>
-            <input 
-                type="text" 
-                id="funcionarioInput" 
-                placeholder="Escribe tu nombre completo..."
-                autocomplete="off"
-            >
+    <h1>📊 Filtro de Trámites</h1>
+    <p>Filtra registros y genera una <strong>entrega de turno</strong> formateada.</p>
+
+    <div class="card">
+        <label for="file-input"><strong>1. Selecciona el archivo Excel (.xlsx):</strong></label>
+        <input type="file" id="file-input" accept=".xlsx,.xls" />
+
+        <div class="config-row">
+            <label>
+                Aux. Referencia (quien entrega):
+                <input type="text" id="aux-referencia" placeholder="Ej: LIZ CABRILES" />
+            </label>
+            <label>
+                Recibe Aux Referencia:
+                <input type="text" id="recibe-aux" placeholder="Ej: BLADIMIR REALES" />
+            </label>
         </div>
 
-        <div class="upload-area" id="uploadArea">
-            <input type="file" id="pdfInput" accept="application/pdf" hidden>
-            <div class="upload-content">
-                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                    <polyline points="17 8 12 3 7 8"></polyline>
-                    <line x1="12" y1="3" x2="12" y2="15"></line>
-                </svg>
-                <p><strong>Haz clic</strong> o arrastra un PDF aquí</p>
-                <span class="hint">Solo archivos .pdf</span>
-            </div>
-        </div>
-
-        <div class="controls" id="controls" style="display:none;">
-            <button id="convertBtn" class="btn-primary">🔍 Extraer datos</button>
-        </div>
-
-        <div class="status" id="status"></div>
-
-        <div class="preview" id="preview" style="display:none;">
-            <h2>Vista previa</h2>
-            <div class="table-wrapper">
-                <table id="previewTable"></table>
-            </div>
-            <div class="actions">
-                <button id="downloadBtn" class="btn-success">⬇️ Descargar Excel</button>
-                <button id="copyBtn" class="btn-secondary">📋 Copiar fila</button>
-            </div>
+        <div id="loading">⏳ Cargando Python y procesando... (la primera vez tarda unos segundos)</div>
+        <div style="margin-top: 0.5rem;">
+            <button id="process-btn">Procesar archivo</button>
+            <button id="download-btn" style="display:none;">⬇️ Descargar Excel</button>
+            <button id="copy-btn" style="display:none;">📋 Copiar entrega</button>
         </div>
     </div>
 
-    <script>
-        pdfjsLib.GlobalWorkerOptions.workerSrc = 
-            'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    <div class="card">
+        <div id="stats" class="stats" style="display:none;"></div>
+    </div>
 
-        const uploadArea = document.getElementById('uploadArea');
-        const pdfInput = document.getElementById('pdfInput');
-        const controls = document.getElementById('controls');
-        const convertBtn = document.getElementById('convertBtn');
-        const statusEl = document.getElementById('status');
-        const preview = document.getElementById('preview');
-        const previewTable = document.getElementById('previewTable');
-        const downloadBtn = document.getElementById('downloadBtn');
-        const copyBtn = document.getElementById('copyBtn');
-        const funcionarioInput = document.getElementById('funcionarioInput');
+    <div class="card">
+        <div id="status" class="status">Esperando archivo...</div>
+    </div>
 
-        let currentPdf = null;
-        let extractedData = null;
+    <div class="card">
+        <h2>📝 Entrega de turno</h2>
+        <div id="turno" class="turno">Aquí verás la entrega de turno generada.</div>
+    </div>
 
-        // ============ PERSISTIR FUNCIONARIO EN EL NAVEGADOR ============
-        const FUNC_KEY = 'funcionario_nombre';
-        funcionarioInput.value = localStorage.getItem(FUNC_KEY) || '';
-        funcionarioInput.addEventListener('input', () => {
-            localStorage.setItem(FUNC_KEY, funcionarioInput.value);
-        });
+    <div class="card">
+        <h2>🔍 Detalle / depuración</h2>
+        <div id="output" class="output">Aquí verás los registros filtrados y el diagnóstico.</div>
+    </div>
 
-        // ============ EVENTOS ============
-        uploadArea.addEventListener('click', () => pdfInput.click());
-        uploadArea.addEventListener('dragover', (e) => { e.preventDefault(); uploadArea.classList.add('dragover'); });
-        uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('dragover'));
-        uploadArea.addEventListener('drop', (e) => {
-            e.preventDefault();
-            uploadArea.classList.remove('dragover');
-            const file = e.dataTransfer.files[0];
-            if (file && file.type === 'application/pdf') handleFile(file);
-            else showStatus('Por favor, sube un archivo PDF válido', 'error');
-        });
-        pdfInput.addEventListener('change', (e) => { if (e.target.files[0]) handleFile(e.target.files[0]); });
+    <py-config>
+        packages = ["openpyxl"]
+    </py-config>
 
-        convertBtn.addEventListener('click', extraerDatos);
-        downloadBtn.addEventListener('click', downloadExcel);
-        copyBtn.addEventListener('click', copyToClipboard);
+    <script type="py">
+import openpyxl
+from io import BytesIO
+from js import document, Uint8Array, window, console
+from pyodide.ffi import create_proxy
 
-        // ============ CARGA ============
-        async function handleFile(file) {
-            showStatus('Cargando PDF...', 'info');
-            try {
-                const arrayBuffer = await file.arrayBuffer();
-                currentPdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-                showStatus(`✅ PDF cargado: ${currentPdf.numPages} página(s)`, 'success');
-                controls.style.display = 'flex';
-                preview.style.display = 'none';
-            } catch (err) {
-                console.error(err);
-                showStatus('Error al cargar el PDF: ' + err.message, 'error');
-            }
-        }
+# ---------- Estado global ----------
+resultado_bytes = None
+texto_turno = ""
 
-        // ============ EXTRAER TEXTO ============
-        async function extraerTextoCompleto() {
-            let texto = '';
-            for (let pageNum = 1; pageNum <= currentPdf.numPages; pageNum++) {
-                const page = await currentPdf.getPage(pageNum);
-                const content = await page.getTextContent();
-                texto += content.items.map(i => i.str).join(' ') + '\n';
-            }
-            return texto;
-        }
 
-        // ============ SEPARAR NOMBRE Y APELLIDO ============
-        function separarNombreApellido(nombreCompleto) {
-            const partes = nombreCompleto.toUpperCase()
-                .replace(/\s+/g, ' ')
-                .trim()
-                .split(' ')
-                .filter(p => p.length > 0);
+# ---------- Utilidades ----------
+def set_status(msg, tipo="ok"):
+    el = document.getElementById("status")
+    el.innerText = msg
+    el.className = "status " + tipo
 
-            if (partes.length === 0) return { nombre: '', apellido: '' };
-            if (partes.length === 1) return { nombre: partes[0], apellido: '' };
-            if (partes.length === 2) return { nombre: partes[0], apellido: partes[1] };
-            if (partes.length === 3) return { nombre: partes.slice(0, 2).join(' '), apellido: partes[2] };
-            
-            // 4 o más: 2 nombres + resto apellidos (formato colombiano típico)
-            return {
-                nombre: partes.slice(0, 2).join(' '),
-                apellido: partes.slice(2).join(' ')
-            };
-        }
 
-        // ============ EXTRAER LOS CAMPOS ============
-        function extraerCampos(texto) {
-            const t = texto.replace(/[ \t]+/g, ' ');
-            
-            const datos = {
-                'FUNCIONARIO': (funcionarioInput.value || '').trim().toUpperCase() || 'NO ESPECIFICADO',
-                'FECHA': '',
-                'HORA': '',
-                'NOMBRE': '',
-                'APELLIDO': '',
-                'TIPO DE DOCUMENTO': '',
-                'NUMERO DE DOCUMENTO': '',
-                'EDAD': '',
-                'EPS': '',
-                'TIPO DE TRAMITE': '',
-                'SERVICIO REQUERIDO': ''
-            };
+def set_output(msg):
+    document.getElementById("output").innerText = msg
 
-            // ---------- NOMBRE COMPLETO ----------
-            let nombreCompleto = '';
-            const matchHeader = t.match(
-                /HISTORIA\s+CL[ÍI]NICA\s+No\.?\s*CC\s*\d+\s*[-–—]+\s*([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s]+?)(?=\s+(?:Empresa|EMPRESA|Fecha|FECHA|Afiliado|AFILIADO|$))/i
-            );
-            if (matchHeader) nombreCompleto = matchHeader[1].trim().replace(/\s+/g, ' ');
 
-            if (!nombreCompleto) {
-                const matchAlt = t.match(/Nombre\s+Completo\s*:?\s*([A-Za-zÁÉÍÓÚÑáéíóúñ\s]+?)(?=\s+(?:Documento|Fecha|Edad|Sexo|$))/i);
-                if (matchAlt) nombreCompleto = matchAlt[1].trim().replace(/\s+/g, ' ').toUpperCase();
-            }
+def set_turno(msg):
+    document.getElementById("turno").innerText = msg
 
-            if (nombreCompleto) {
-                const { nombre, apellido } = separarNombreApellido(nombreCompleto);
-                datos['NOMBRE'] = nombre;
-                datos['APELLIDO'] = apellido;
-            }
 
-            // ---------- TIPO Y NÚMERO DE DOCUMENTO ----------
-            const matchCC = t.match(/\b(CC|TI|RC|CE|PA|MS|AS|PE|PT)\s*(\d{6,12})\b/);
-            if (matchCC) {
-                datos['TIPO DE DOCUMENTO'] = matchCC[1].toUpperCase();
-                datos['NUMERO DE DOCUMENTO'] = matchCC[2];
-            } else {
-                const matchDoc = t.match(/Documento\s+De\s+Identidad\s*:?\s*(\d{6,12})/i);
-                if (matchDoc) {
-                    datos['NUMERO DE DOCUMENTO'] = matchDoc[1];
-                    datos['TIPO DE DOCUMENTO'] = 'CC';
-                }
-            }
+def mostrar_loading(show):
+    document.getElementById("loading").style.display = "block" if show else "none"
 
-            // ---------- EDAD ----------
-            const matchEdad = t.match(/Edad\s*(?:actual)?\s*:?\s*(\d{1,3})\s*(?:A[ÑN]OS|Años)/i);
-            if (matchEdad) datos['EDAD'] = matchEdad[1];
 
-            // ---------- EPS ----------
-            let eps = '';
-            const matchEPS = t.match(/Empresa\s*:?\s*(EPS\s+[A-Za-záéíóúñ\s]+?)(?=\s*['"]|\s+(?:Afiliado|Fecha|Fecha\s*Nac|$))/i);
-            if (matchEPS) eps = matchEPS[1].trim();
+async def leer_archivo():
+    file_input = document.getElementById("file-input")
+    if not file_input.files.length:
+        return None
+    file = file_input.files.item(0)
+    buffer = await file.arrayBuffer()
+    data = Uint8Array.new(buffer).to_py()
+    return BytesIO(bytes(data))
 
-            if (!eps) {
-                const matchAseg = t.match(/Aseguradora\s*:?\s*([A-Za-záéíóúñ\s]+?)(?=\s+(?:Motivo|Enfermedad|Fecha|$))/i);
-                if (matchAseg) eps = matchAseg[1].trim();
-            }
 
-            if (eps) {
-                eps = eps.replace(/['"*\(\)]/g, '')
-                         .replace(/\bU\b/g, '')
-                         .replace(/\bC\b/g, '')
-                         .replace(/\s+/g, ' ')
-                         .trim()
-                         .toUpperCase();
-                datos['EPS'] = eps;
-            }
+def crear_stat(container, valor, texto, clase_extra=""):
+    d = document.createElement("div")
+    d.className = "stat " + clase_extra
+    s = document.createElement("strong")
+    s.innerText = str(valor)
+    d.appendChild(s)
+    d.appendChild(document.createTextNode(texto))
+    container.appendChild(d)
 
-            // ---------- FECHA Y HORA ----------
-            // Patrón: "FOLIO 100 FECHA17/09/2026 14:05:51 TIPO DE ATENCIÓN URGENCIAS"
-            // O: "FECHA17/09/2026 14:05:51"
-            // Nota: la fecha puede venir sin espacio después de "FECHA"
-            const matchFecha = t.match(/FECHA\s*:?\s*(\d{2}\/\d{2}\/\d{2,4})\s+(\d{2}:\d{2}(?::\d{2})?)/i);
-            if (matchFecha) {
-                datos['FECHA'] = matchFecha[1];
-                datos['HORA'] = matchFecha[2];
-            } else {
-                // Solo fecha
-                const matchSoloFecha = t.match(/FECHA\s*:?\s*(\d{2}\/\d{2}\/\d{2,4})/i);
-                if (matchSoloFecha) datos['FECHA'] = matchSoloFecha[1];
-                
-                // Solo hora
-                const matchSoloHora = t.match(/(\d{2}:\d{2}(?::\d{2})?)/);
-                if (matchSoloHora) datos['HORA'] = matchSoloHora[1];
-            }
 
-            // ---------- TIPO DE TRAMITE ----------
-            // Buscar "TIPO DE ATENCIÓN URGENCIAS" / "TIPO DE ATENCIÓN HOSPITALIZACION"
-            const matchTramite = t.match(/TIPO\s*DE\s*ATENCI[OÓ]N\s*:?\s*([A-ZÁÉÍÓÚÑ]+)/i);
-            if (matchTramite) {
-                datos['TIPO DE TRAMITE'] = matchTramite[1].toUpperCase();
-            }
+def fecha_actual_formateada():
+    from js import Date
+    d = Date.new()
+    dia = str(d.getDate()).zfill(2)
+    mes = str(d.getMonth() + 1).zfill(2)
+    anio = d.getFullYear()
+    hora = str(d.getHours()).zfill(2)
+    minuto = str(d.getMinutes()).zfill(2)
+    return f"{dia}/{mes}/{anio} {hora}:{minuto}"
 
-            // ---------- SERVICIO REQUERIDO (ESPECIALIDAD DE REMISIÓN) ----------
-            const patronesEsp = [
-                /remisi[oó]n\s+(?:por|a|para)\s+([A-ZÁÉÍÓÚÑ][a-záéíóúñ]+(?:\s+[a-záéíóúñ]+)?)/i,
-                /remitir\s+a\s+([A-ZÁÉÍÓÚÑ][a-záéíóúñ]+)/i,
-                /remision\s+por\s+([A-ZÁÉÍÓÚÑ][a-záéíóúñ]+)/i,
-                /solicita\s+valoraci[oó]n\s+por\s+([A-ZÁÉÍÓÚÑ][a-záéíóúñ]+(?:\s+[a-záéíóúñ]+)?)/i,
-                /interconsulta\s+(?:por|con)\s+([A-ZÁÉÍÓÚÑ][a-záéíóúñ]+(?:\s+[a-záéíóúñ]+)?)/i,
-                /interconsulta\s+por\s*([A-ZÁÉÍÓÚÑ][A-Za-záéíóúñ\s]+?)\s*\(/i
-            ];
-            
-            for (const p of patronesEsp) {
-                const m = t.match(p);
-                if (m && m[1]) {
-                    datos['SERVICIO REQUERIDO'] = m[1].trim().toUpperCase();
-                    break;
-                }
-            }
 
-            // Si no se encontró remisión, buscar "interconsulta por medicina familiar"
-            if (!datos['SERVICIO REQUERIDO']) {
-                const matchInter = t.match(/INTERCONSULTA\s+POR\s*([A-ZÁÉÍÓÚÑ][A-Za-záéíóúñ\s]+?)(?=\s*\(|$)/i);
-                if (matchInter) {
-                    datos['SERVICIO REQUERIDO'] = matchInter[1].trim().toUpperCase();
-                }
-            }
+# ---------- Normalización de texto ----------
+def norm(v):
+    if v is None:
+        return ""
+    s = str(v)
+    s = s.replace("\u00A0", " ").replace("\n", " ").replace("\r", " ").replace("\t", " ")
+    s = " ".join(s.split())
+    return s.strip().upper()
 
-            return datos;
-        }
 
-        // ============ EXTRAER Y MOSTRAR ============
-        async function extraerDatos() {
-            if (!currentPdf) return;
-            
-            // Validar funcionario
-            if (!funcionarioInput.value.trim()) {
-                showStatus('⚠️ Por favor escribe el nombre del FUNCIONARIO antes de continuar', 'error');
-                funcionarioInput.focus();
-                return;
-            }
-            
-            convertBtn.disabled = true;
-            convertBtn.textContent = 'Procesando...';
-            showStatus('Extrayendo datos del PDF...', 'info');
+def formatear_fila(fila):
+    partes = []
+    for v in fila:
+        if v is None or str(v).strip() == "":
+            continue
+        partes.append(str(v).strip())
+    # Salto de línea final para separar visualmente cada paciente
+    return "\t".join(partes) + "\n"
 
-            try {
-                const texto = await extraerTextoCompleto();
-                extractedData = extraerCampos(texto);
 
-                const camposOK = Object.values(extractedData).filter(v => v && v.trim() !== '').length;
-                const total = Object.keys(extractedData).length;
+# ---------- Lógica principal ----------
+async def procesar_archivo(event=None):
+    global resultado_bytes, texto_turno
 
-                renderPreview(extractedData);
-                showStatus(`✅ ${camposOK}/${total} campos extraídos correctamente`, 
-                    camposOK === total ? 'success' : 'info');
-                preview.style.display = 'block';
-                preview.scrollIntoView({ behavior: 'smooth' });
-            } catch (err) {
-                console.error(err);
-                showStatus('Error al procesar: ' + err.message, 'error');
-            } finally {
-                convertBtn.disabled = false;
-                convertBtn.textContent = '🔍 Extraer datos';
-            }
-        }
+    mostrar_loading(True)
+    set_status("⏳ Procesando archivo...", "loading")
+    set_output("Trabajando...")
+    set_turno("Generando...")
+    document.getElementById("download-btn").style.display = "none"
+    document.getElementById("copy-btn").style.display = "none"
+    document.getElementById("stats").style.display = "none"
 
-        // ============ VISTA PREVIA ============
-        function renderPreview(datos) {
-            const headers = Object.keys(datos);
-            
-            let html = '<thead><tr>';
-            headers.forEach(h => html += `<th>${escapeHtml(h)}</th>`);
-            html += '</tr></thead><tbody><tr>';
-            headers.forEach(h => {
-                const valor = datos[h];
-                if (valor && valor.trim() !== '') {
-                    html += `<td>${escapeHtml(valor)}</td>`;
-                } else {
-                    html += `<td><span class="missing">—</span></td>`;
-                }
-            });
-            html += '</tr></tbody>';
-            
-            previewTable.innerHTML = html;
-        }
+    try:
+        bytes_io = await leer_archivo()
+        if bytes_io is None:
+            set_status("⚠️ Selecciona primero un archivo Excel.", "error")
+            set_output("")
+            set_turno("")
+            mostrar_loading(False)
+            return
 
-        function escapeHtml(str) {
-            const div = document.createElement('div');
-            div.textContent = String(str);
-            return div.innerHTML;
-        }
+        # ========== CARGA DEL EXCEL ==========
+        wb = openpyxl.load_workbook(bytes_io)
+        ws = wb.active
 
-        // ============ DESCARGA EXCEL ============
-        function downloadExcel() {
-            if (!extractedData) return;
-            
-            const ws = XLSX.utils.json_to_sheet([extractedData], {
-                header: Object.keys(extractedData)
-            });
-            
-            ws['!cols'] = Object.keys(extractedData).map(key => ({
-                wch: Math.max(key.length + 2, 15)
-            }));
+        # --- Nombres de columnas a buscar ---
+        columna_filtro1 = "TRAMITE CERRADO/ABIERTO"
+        valor_filtro1 = "Tramite en proceso"
 
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, 'HC');
-            
-            const doc = extractedData['NUMERO DE DOCUMENTO'] || Date.now();
-            const fecha = extractedData['FECHA']?.replace(/\//g, '-') || '';
-            XLSX.writeFile(wb, `HC_${doc}_${fecha}.xlsx`);
-            showStatus('✅ Excel descargado', 'success');
-        }
+        columna_filtro2 = "OBSERVACION"
+        valor_filtro2 = "URGENCIA VITAL"
 
-        // ============ COPIAR ============
-        async function copyToClipboard() {
-            if (!extractedData) return;
-            
-            try {
-                const headers = Object.keys(extractedData);
-                const values = headers.map(h => extractedData[h] || '');
-                
-                const texto = headers.join('\t') + '\n' + values.join('\t');
-                
-                await navigator.clipboard.writeText(texto);
-                showStatus('✅ Fila copiada. Pega en Excel con Ctrl+V', 'success');
-            } catch (err) {
-                showStatus('Error al copiar: ' + err.message, 'error');
-            }
-        }
+        columna_filtro3 = "TIPO DE TRAMITE"
+        valor_filtro3 = "REMISION"
 
-        // ============ UTILIDAD ============
-        function showStatus(msg, type) {
-            statusEl.textContent = msg;
-            statusEl.className = 'status ' + type;
-        }
+        columna_filtro4 = "ESTADO DEL TRAMITE"
+        valor_filtro4 = "SE INFORMA"
+
+        tipo_remision = "REMISION"
+        tipo_cita = "CITA"
+
+        COL_FIN_EXCEL = 26
+        COL_FIN_SALIDA = 13
+
+        # ---------- Encabezados ----------
+        headers_full = []
+        for i in range(1, COL_FIN_EXCEL + 1):
+            cell = ws.cell(row=1, column=i)
+            headers_full.append(cell.value if cell.value is not None else ("COL_" + str(i)))
+
+        headers_salida = headers_full[:COL_FIN_SALIDA]
+
+        # ---------- Detección de índices ----------
+        idx_por_nombre = {}
+        for i, cell in enumerate(ws[1], start=1):
+            key = norm(cell.value)
+            if key and key not in idx_por_nombre:
+                idx_por_nombre[key] = i
+
+        filtro_index1 = idx_por_nombre.get(norm(columna_filtro1))
+        filtro_index2 = idx_por_nombre.get(norm(columna_filtro2))
+        filtro_index3 = idx_por_nombre.get(norm(columna_filtro3))
+        filtro_index4 = idx_por_nombre.get(norm(columna_filtro4))
+
+        if filtro_index1 is None:
+            raise ValueError("No se encontró la columna '" + columna_filtro1 + "'")
+        if filtro_index2 is None:
+            raise ValueError("No se encontró la columna '" + columna_filtro2 + "'")
+        if filtro_index3 is None:
+            raise ValueError("No se encontró la columna '" + columna_filtro3 + "'")
+        if filtro_index4 is None:
+            raise ValueError("No se encontró la columna '" + columna_filtro4 + "'")
+
+        idx_estado_tramite = filtro_index4
+        idx_tipo_tramite = filtro_index3
+
+        if idx_estado_tramite > COL_FIN_EXCEL:
+            raise ValueError(
+                "La columna '" + columna_filtro4 + "' está en la posición "
+                + str(idx_estado_tramite) + " (más allá de Z). Amplía COL_FIN_EXCEL."
+            )
+
+        def extraer_fila(row, limite):
+            fila = []
+            for i in range(1, limite + 1):
+                fila.append(row[i - 1] if (i - 1) < len(row) else None)
+            return fila
+
+        # ---------- Diagnóstico ----------
+        valores_estado = {}
+        valores_tipo = {}
+        for row in ws.iter_rows(min_row=2, values_only=True):
+            vs = row[idx_estado_tramite - 1] if (idx_estado_tramite - 1) < len(row) else None
+            vt = row[idx_tipo_tramite - 1] if (idx_tipo_tramite - 1) < len(row) else None
+            ks = norm(vs)
+            kt = norm(vt)
+            valores_estado[ks] = valores_estado.get(ks, 0) + 1
+            valores_tipo[kt] = valores_tipo.get(kt, 0) + 1
+
+        # ---------- FILTROS ----------
+        resumen_filtro1 = []
+        resumen_filtro2 = []
+        resumen_filtro3 = []
+        resumen_citas_tramite = []
+        resumen_citas_asignadas = []
+
+        for row in ws.iter_rows(min_row=2, values_only=True):
+            v1 = row[filtro_index1 - 1] if (filtro_index1 - 1) < len(row) else None
+            v2 = row[filtro_index2 - 1] if (filtro_index2 - 1) < len(row) else None
+            v3 = row[filtro_index3 - 1] if (filtro_index3 - 1) < len(row) else None
+            v4 = row[filtro_index4 - 1] if (filtro_index4 - 1) < len(row) else None
+
+            n1 = norm(v1)
+            n2 = norm(v2)
+            n3 = norm(v3)
+            n4 = norm(v4)
+
+            en_proceso = (n1 == norm(valor_filtro1))
+            es_remision = (n3 == norm(tipo_remision))
+            es_cita = (n3 == norm(tipo_cita))
+            es_se_informa = (n4 == norm(valor_filtro4))
+
+            # Remisiones
+            if en_proceso and es_remision:
+                resumen_filtro1.append(extraer_fila(row, COL_FIN_EXCEL))
+
+            if (n2 and norm(valor_filtro2) in n2) and es_remision and en_proceso:
+                resumen_filtro2.append(extraer_fila(row, COL_FIN_EXCEL))
+
+            if es_se_informa and es_remision and en_proceso:
+                resumen_filtro3.append(extraer_fila(row, COL_FIN_EXCEL))
+
+            # Citas
+            if es_cita and en_proceso:
+                resumen_citas_tramite.append(extraer_fila(row, COL_FIN_EXCEL))
+
+            if es_cita and en_proceso and es_se_informa:
+                resumen_citas_asignadas.append(extraer_fila(row, COL_FIN_EXCEL))
+
+        contador1 = len(resumen_filtro1)
+        contador2 = len(resumen_filtro2)
+        contador3 = len(resumen_filtro3)
+        contador_citas_tramite = len(resumen_citas_tramite)
+        contador_citas_asignadas = len(resumen_citas_asignadas)
+
+        # ---------- ACEPTADOS GENERAL ----------
+        aceptados_general = []
+        vistos = set()
+        for f in resumen_filtro3:
+            clave = tuple(str(x) for x in f)
+            if clave not in vistos:
+                vistos.add(clave)
+                aceptados_general.append(f)
+        total_aceptados_general = len(aceptados_general)
+
+        # ---------- Total remisiones ----------
+        claves = set()
+        for f in resumen_filtro1 + resumen_filtro2 + resumen_filtro3:
+            claves.add(tuple(str(x) for x in f))
+        total_remisiones = len(claves)
+
+        # ========== EXCEL DE SALIDA ==========
+        wb_out = openpyxl.Workbook()
+        ws1 = wb_out.active
+        ws1.title = "Remisiones en proceso"
+        ws2 = wb_out.create_sheet("Urgencia Vital")
+        ws3 = wb_out.create_sheet("Remisiones SE INFORMA")
+        ws4 = wb_out.create_sheet("Citas en tramite")
+        ws5 = wb_out.create_sheet("Citas SE INFORMA")
+
+        ws1.append(headers_salida)
+        ws2.append(headers_salida)
+        ws3.append(headers_salida)
+        ws4.append(headers_salida)
+        ws5.append(headers_salida)
+
+        for fila in resumen_filtro1:
+            ws1.append(fila[:COL_FIN_SALIDA])
+        for fila in resumen_filtro2:
+            ws2.append(fila[:COL_FIN_SALIDA])
+        for fila in resumen_filtro3:
+            ws3.append(fila[:COL_FIN_SALIDA])
+        for fila in resumen_citas_tramite:
+            ws4.append(fila[:COL_FIN_SALIDA])
+        for fila in resumen_citas_asignadas:
+            ws5.append(fila[:COL_FIN_SALIDA])
+
+        buffer_out = BytesIO()
+        wb_out.save(buffer_out)
+        resultado_bytes = buffer_out.getvalue()
+
+        # ========== ENTREGA DE TURNO ==========
+        aux_ref = document.getElementById("aux-referencia").value or "(sin especificar)"
+        recibe_aux = document.getElementById("recibe-aux").value or "(sin especificar)"
+        fecha_hora = fecha_actual_formateada()
+
+        lineas = []
+        lineas.append("*Entrega de turno* " + fecha_hora)
+        lineas.append("")
+        lineas.append("*Aux. Referencia:* " + aux_ref)
+        lineas.append("")
+        lineas.append("*Total remisiones:* " + str(total_remisiones))
+        lineas.append("")
+        lineas.append("*Aceptados:* " + str(total_aceptados_general))
+        lineas.append("")
+        for f in aceptados_general[:50]:
+            lineas.append(formatear_fila(f[:COL_FIN_SALIDA]))
+
+        lineas.append("")
+        lineas.append("")
+        lineas.append("*URGENCIAS VITAL:* " + str(contador2).zfill(2))
+        lineas.append("")
+        for f in resumen_filtro2[:50]:
+            lineas.append(formatear_fila(f[:COL_FIN_SALIDA]))
+
+        lineas.append("")
+        lineas.append("")
+        # CITAS EN TRAMITE: solo el número total
+        lineas.append("*CITAS EN TRAMITE:* " + str(contador_citas_tramite))
+
+        lineas.append("")
+        lineas.append("")
+        lineas.append("*PACIENTES CON CITA ASIGNADAS:* " + str(contador_citas_asignadas))
+        lineas.append("")
+        for f in resumen_citas_asignadas[:50]:
+            lineas.append(formatear_fila(f[:COL_FIN_SALIDA]))
+
+        lineas.append("")
+        lineas.append("")
+        lineas.append("*CORREO SIN TRAMITES POR APERTURA:*")
+        lineas.append("")
+        lineas.append("*HOSVITAL PACIENTES  PARA  INICIO DE CONTRAREMISION:* 0")
+        lineas.append("")
+        lineas.append("*Recibe Aux Referencia:* " + recibe_aux)
+
+        texto_turno = "\n".join(lineas)
+        set_turno(texto_turno)
+
+        # ========== ESTADÍSTICAS ==========
+        stats_el = document.getElementById("stats")
+        while stats_el.firstChild:
+            stats_el.removeChild(stats_el.firstChild)
+
+        crear_stat(stats_el, contador1, "Remisiones en proceso")
+        crear_stat(stats_el, contador2, "Urgencia Vital (En proceso)", "verde")
+        crear_stat(stats_el, contador3, "Remisiones SE INFORMA", "naranja")
+        crear_stat(stats_el, contador_citas_tramite, "Citas en trámite", "morado")
+        crear_stat(stats_el, contador_citas_asignadas, "Citas asignadas (SE INFORMA)", "morado")
+        stats_el.style.display = "flex"
+
+        # ========== DIAGNÓSTICO ==========
+        lineas_debug = []
+        lineas_debug.append("=== DIAGNÓSTICO ===")
+        lineas_debug.append("Índice col ESTADO DEL TRAMITE: " + str(idx_estado_tramite) + "  (" + str(headers_full[idx_estado_tramite-1]) + ")")
+        lineas_debug.append("Índice col TIPO DE TRAMITE: " + str(idx_tipo_tramite))
+        lineas_debug.append("")
+        lineas_debug.append("Valores ÚNICOS en TIPO DE TRAMITE (normalizados):")
+        for k, c in sorted(valores_tipo.items(), key=lambda x: -x[1]):
+            lineas_debug.append("  ['" + k + "']  →  " + str(c) + " filas")
+        lineas_debug.append("")
+        lineas_debug.append("Valores ÚNICOS en ESTADO DEL TRAMITE (normalizados):")
+        for k, c in sorted(valores_estado.items(), key=lambda x: -x[1]):
+            lineas_debug.append("  ['" + k + "']  →  " + str(c) + " filas")
+        lineas_debug.append("")
+        lineas_debug.append("=== CONTADORES (todos exigen 'Tramite en proceso') ===")
+        lineas_debug.append("Remisiones en proceso: " + str(contador1))
+        lineas_debug.append("Urgencia Vital: " + str(contador2))
+        lineas_debug.append("Remisiones SE INFORMA (Aceptados): " + str(contador3))
+        lineas_debug.append("Citas en trámite: " + str(contador_citas_tramite))
+        lineas_debug.append("Citas asignadas (SE INFORMA): " + str(contador_citas_asignadas))
+        lineas_debug.append("")
+        lineas_debug.append("--- Primeros 5 citas asignadas ---")
+        for r in resumen_citas_asignadas[:5]:
+            lineas_debug.append(str(r[:COL_FIN_SALIDA]))
+
+        set_output("\n".join(lineas_debug))
+        set_status(
+            "✅ Procesado. " + str(total_remisiones) + " remisiones, "
+            + str(total_aceptados_general) + " aceptados, "
+            + str(contador_citas_tramite) + " citas en trámite, "
+            + str(contador_citas_asignadas) + " citas asignadas.",
+            "ok"
+        )
+        document.getElementById("download-btn").style.display = "inline-block"
+        document.getElementById("copy-btn").style.display = "inline-block"
+
+    except Exception as e:
+        set_status("❌ Error: " + str(e), "error")
+        set_output(str(e))
+        set_turno("Error: " + str(e))
+        console.error(str(e))
+    finally:
+        mostrar_loading(False)
+
+
+# ---------- Descargar Excel ----------
+def descargar_resultado(event=None):
+    global resultado_bytes
+    if resultado_bytes is None:
+        return
+    try:
+        import js
+        arr = Uint8Array.new(len(resultado_bytes))
+        arr.assign(resultado_bytes)
+        blob = js.Blob.new([arr], {"type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"})
+        url = window.URL.createObjectURL(blob)
+        a = document.createElement("a")
+        a.href = url
+        a.download = "resultado_filtrado.xlsx"
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        window.URL.revokeObjectURL(url)
+    except Exception as e:
+        set_status("❌ Error al descargar: " + str(e), "error")
+        console.error(str(e))
+
+
+# ---------- Copiar al portapapeles ----------
+async def copiar_entrega(event=None):
+    global texto_turno
+    if not texto_turno:
+        return
+    try:
+        nav = window.navigator
+        await nav.clipboard.writeText(texto_turno)
+        set_status("📋 Entrega copiada al portapapeles.", "ok")
+    except Exception as e:
+        try:
+            el = document.getElementById("turno")
+            range_ = document.createRange()
+            range_.selectNodeContents(el)
+            sel = window.getSelection()
+            sel.removeAllRanges()
+            sel.addRange(range_)
+            set_status("⚠️ No se pudo copiar. Texto seleccionado: pulsa Ctrl+C.", "loading")
+        except Exception as e2:
+            set_status("❌ No se pudo copiar: " + str(e), "error")
+
+
+# ---------- Registrar eventos ----------
+document.getElementById("process-btn").addEventListener("click", create_proxy(procesar_archivo))
+document.getElementById("download-btn").addEventListener("click", create_proxy(descargar_resultado))
+document.getElementById("copy-btn").addEventListener("click", create_proxy(copiar_entrega))
+
+console.log("✅ App lista. Botones registrados.")
     </script>
+
 </body>
 </html>
