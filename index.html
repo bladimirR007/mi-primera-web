@@ -1,16 +1,321 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <title>Filtro de Trámites Excel</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Filtro de Trámites - Excel</title>
+    <link rel="stylesheet" href="https://pyscript.net/releases/2024.1.1/core.css" />
+    <script type="module" src="https://pyscript.net/releases/2024.1.1/core.js"></script>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 1000px;
+            margin: 2rem auto;
+            padding: 1rem 1.5rem;
+            color: #24292e;
+            background: #f6f8fa;
+        }
+        h1 { margin-bottom: 0.3rem; }
+        .card {
+            background: white;
+            border: 1px solid #d0d7de;
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        #file-input {
+            margin: 0.5rem 0;
+            padding: 0.6rem;
+            border: 1px dashed #d0d7de;
+            border-radius: 6px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        button {
+            padding: 0.7rem 1.4rem;
+            background: #2ea44f;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            margin-right: 0.5rem;
+        }
+        button:hover { background: #22863a; }
+        button:disabled { background: #94d3a2; cursor: not-allowed; }
+        #download-btn { background: #0366d6; }
+        #download-btn:hover { background: #0250a3; }
+        .output {
+            background: #0d1117;
+            color: #c9d1d9;
+            padding: 1rem;
+            border-radius: 8px;
+            font-family: 'SF Mono', Consolas, monospace;
+            font-size: 0.88rem;
+            white-space: pre-wrap;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        .status {
+            font-weight: 600;
+            margin-bottom: 0.8rem;
+            color: #57606a;
+        }
+        .status.ok { color: #1a7f37; }
+        .status.error { color: #cf222e; }
+        .status.loading { color: #9a6700; }
+        #loading {
+            display: none;
+            color: #9a6700;
+            font-style: italic;
+            margin-top: 0.5rem;
+        }
+        .stats {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        .stat {
+            flex: 1;
+            background: #ddf4ff;
+            border-left: 4px solid #0969da;
+            padding: 0.8rem;
+            border-radius: 6px;
+        }
+        .stat strong { display: block; font-size: 1.4rem; color: #0969da; }
+    </style>
 </head>
 <body>
-  <h1>Filtro de Trámites</h1>
-  <input type="file" id="fileInput" />
-  <pre id="output"></pre>
 
-  <!-- Librería XLSX -->
-  <script src="xlsx.full.min.js"></script>
-  <script src="script.js"></script>
+    <h1>📊 Filtro de Trámites</h1>
+    <p>Filtra registros de <em>Trámite en proceso</em> y <em>Urgencia Vital</em> con tipo <em>Remisión</em>.</p>
+
+    <div class="card">
+        <label for="file-input"><strong>1. Selecciona el archivo Excel (.xlsx):</strong></label>
+        <input type="file" id="file-input" accept=".xlsx,.xls" />
+        <div id="loading">⏳ Cargando Python y procesando... (la primera vez tarda unos segundos)</div>
+        <div style="margin-top: 1rem;">
+            <button id="process-btn" py-onclick="procesar_archivo">Procesar archivo</button>
+            <button id="download-btn" py-onclick="descargar_resultado" style="display:none;">⬇️ Descargar resultados</button>
+        </div>
+    </div>
+
+    <div class="card">
+        <div id="stats" class="stats" style="display:none;"></div>
+    </div>
+
+    <div class="card">
+        <div id="status" class="status">Esperando archivo...</div>
+        <div id="output" class="output">Aquí verás los registros filtrados.</div>
+    </div>
+
+    <py-config>
+        packages = ["openpyxl"]
+    </py-config>
+
+    <py-script>
+import openpyxl
+from io import BytesIO
+from js import document, Uint8Array, window, console
+import json
+
+# ---------- Variables globales ----------
+resultado_bytes = None
+resumen_filtro1 = []
+resumen_filtro2 = []
+
+
+# ---------- Utilidades ----------
+def log(msg):
+    """Escribe en la consola del navegador."""
+    console.log(msg)
+
+
+def set_status(msg, tipo="ok"):
+    el = document.getElementById("status")
+    el.innerText = msg
+    el.className = "status " + tipo
+
+
+def set_output(msg):
+    document.getElementById("output").innerText = msg
+
+
+def mostrar_loading(show):
+    document.getElementById("loading").style.display = "block" if show else "none"
+
+
+# ---------- Carga del archivo ----------
+async def leer_archivo():
+    file_input = document.getElementById("file-input")
+    if not file_input.files.length:
+        return None
+    file = file_input.files.item(0)
+    buffer = await file.arrayBuffer()
+    data = Uint8Array.new(buffer).to_py()
+    return BytesIO(bytes(data))
+
+
+# ---------- Lógica principal ----------
+async def procesar_archivo(event=None):
+    global resultado_bytes, resumen_filtro1, resumen_filtro2
+
+    mostrar_loading(True)
+    set_status("⏳ Procesando archivo...", "loading")
+    set_output("Trabajando...")
+    document.getElementById("download-btn").style.display = "none"
+    document.getElementById("stats").style.display = "none"
+
+    try:
+        bytes_io = await leer_archivo()
+        if bytes_io is None:
+            set_status("⚠️ Selecciona primero un archivo Excel.", "error")
+            set_output("")
+            mostrar_loading(False)
+            return
+
+        # ========== CARGA DEL EXCEL ==========
+        wb = openpyxl.load_workbook(bytes_io)
+        ws = wb.active
+
+        # Definir filtros y columnas deseadas
+        columna_filtro1 = "TRAMITE CERRADO/ABIERTO"
+        valor_filtro1 = "Tramite en proceso"
+
+        columna_filtro2 = "OBSERVACION"
+        valor_filtro2 = "URGENCIA VITAL"
+
+        columna_filtro3 = "TIPO DE TRAMITE"
+        valor_filtro3 = "REMISION"
+
+        columnas_deseadas = ["NOMBRE", "APELLIDO", "FUNCIONARIO"]
+
+        # Identificar índices de columnas
+        indices = {}
+        filtro_index1 = None
+        filtro_index2 = None
+        filtro_index3 = None
+
+        for i, cell in enumerate(ws[1], start=1):
+            if cell.value == columna_filtro1:
+                filtro_index1 = i
+            if cell.value == columna_filtro2:
+                filtro_index2 = i
+            if cell.value == columna_filtro3:
+                filtro_index3 = i
+            if cell.value in columnas_deseadas:
+                indices[cell.value] = i
+
+        # Validaciones
+        if filtro_index1 is None:
+            raise ValueError(f"No se encontró la columna '{columna_filtro1}'")
+        if filtro_index2 is None:
+            raise ValueError(f"No se encontró la columna '{columna_filtro2}'")
+        if filtro_index3 is None:
+            raise ValueError(f"No se encontró la columna '{columna_filtro3}'")
+
+        log(f"Columnas encontradas: {indices}")
+
+        # ---------- Filtro 1: Tramite en proceso + REMISION ----------
+        resumen_filtro1 = []
+        contador1 = 0
+        for row in ws.iter_rows(min_row=2, values_only=True):
+            if (row[filtro_index1 - 1] and str(row[filtro_index1 - 1]).strip().upper() == valor_filtro1.upper()
+                and row[filtro_index3 - 1] and str(row[filtro_index3 - 1]).strip().upper() == valor_filtro3.upper()):
+                datos_filtrados = {col: row[idx - 1] for col, idx in indices.items()}
+                resumen_filtro1.append(datos_filtrados)
+                contador1 += 1
+
+        # ---------- Filtro 2: OBSERVACION contiene URGENCIA VITAL + REMISION ----------
+        resumen_filtro2 = []
+        contador2 = 0
+        for row in ws.iter_rows(min_row=2, values_only=True):
+            if (row[filtro_index2 - 1] and valor_filtro2 in str(row[filtro_index2 - 1]).upper()
+                and row[filtro_index3 - 1] and str(row[filtro_index3 - 1]).strip().upper() == valor_filtro3.upper()):
+                datos_filtrados = {col: row[idx - 1] for col, idx in indices.items()}
+                resumen_filtro2.append(datos_filtrados)
+                contador2 += 1
+
+        # ========== GENERAR EXCEL DE SALIDA ==========
+        wb_out = openpyxl.Workbook()
+        ws1 = wb_out.active
+        ws1.title = "Tramite en proceso"
+        ws2 = wb_out.create_sheet("Urgencia Vital")
+
+        # Encabezados
+        headers = list(indices.keys())
+        ws1.append(headers)
+        ws2.append(headers)
+
+        for reg in resumen_filtro1:
+            ws1.append([reg.get(c) for c in headers])
+        for reg in resumen_filtro2:
+            ws2.append([reg.get(c) for c in headers])
+
+        buffer_out = BytesIO()
+        wb_out.save(buffer_out)
+        resultado_bytes = buffer_out.getvalue()
+
+        # ========== MOSTRAR RESULTADOS EN PANTALLA ==========
+        stats_html = f"""
+            <div class="stat">
+                <strong>{contador1}</strong>
+                Trámite en proceso (REMISIÓN)
+            </div>
+            <div class="stat">
+                <strong>{contador2}</strong>
+                Urgencia Vital (REMISIÓN)
+            </div>
+        """
+        stats_el = document.getElementById("stats")
+        stats_el.innerHTML = stats_html
+        stats_el.style.display = "flex"
+
+        # Vista previa en texto
+        lineas = []
+        lineas.append("=== FILTRO 1: Trámite en proceso (solo REMISIÓN) ===")
+        lineas.append(f"Total: {contador1}\n")
+        for r in resumen_filtro1[:20]:
+            lineas.append(str(r))
+        if contador1 > 20:
+            lineas.append(f"... y {contador1 - 20} más (ver Excel descargado)")
+
+        lineas.append("\n" + "=" * 55 + "\n")
+        lineas.append("=== FILTRO 2: Observación contiene 'URGENCIA VITAL' (solo REMISIÓN) ===")
+        lineas.append(f"Total: {contador2}\n")
+        for r in resumen_filtro2[:20]:
+            lineas.append(str(r))
+        if contador2 > 20:
+            lineas.append(f"... y {contador2 - 20} más (ver Excel descargado)")
+
+        set_output("\n".join(lineas))
+        set_status(f"✅ Procesado. {contador1 + contador2} registros encontrados en total.", "ok")
+        document.getElementById("download-btn").style.display = "inline-block"
+
+    except Exception as e:
+        set_status(f"❌ Error: {e}", "error")
+        set_output(str(e))
+    finally:
+        mostrar_loading(False)
+
+
+# ---------- Descargar resultado ----------
+def descargar_resultado(event=None):
+    if resultado_bytes is None:
+        return
+    blob = window.Blob.new(
+        [Uint8Array.new(resultado_bytes)],
+        {"type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}
+    )
+    url = window.URL.createObjectURL(blob)
+    a = document.createElement("a")
+    a.href = url
+    a.download = "resultado_filtrado.xlsx"
+    a.click()
+    window.URL.revokeObjectURL(url)
+    </py-script>
+
 </body>
 </html>
