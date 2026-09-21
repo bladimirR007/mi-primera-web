@@ -9,13 +9,14 @@
     <style>
         body {
             font-family: system-ui, -apple-system, sans-serif;
-            max-width: 1000px;
+            max-width: 1100px;
             margin: 2rem auto;
             padding: 1rem 1.5rem;
             color: #24292e;
             background: #f6f8fa;
         }
         h1 { margin-bottom: 0.3rem; }
+        h2 { margin-top: 0; font-size: 1.1rem; }
         .card {
             background: white;
             border: 1px solid #d0d7de;
@@ -42,11 +43,14 @@
             font-size: 1rem;
             font-weight: 600;
             margin-right: 0.5rem;
+            margin-bottom: 0.4rem;
         }
         button:hover { background: #22863a; }
         button:disabled { background: #94d3a2; cursor: not-allowed; }
         #download-btn { background: #0366d6; }
         #download-btn:hover { background: #0250a3; }
+        #copy-btn { background: #6f42c1; }
+        #copy-btn:hover { background: #5a32a3; }
         .output {
             background: #0d1117;
             color: #c9d1d9;
@@ -56,6 +60,18 @@
             font-size: 0.88rem;
             white-space: pre-wrap;
             max-height: 500px;
+            overflow-y: auto;
+        }
+        .turno {
+            background: #ffffff;
+            color: #24292e;
+            padding: 1.2rem;
+            border-radius: 8px;
+            border: 1px solid #d0d7de;
+            font-family: 'SF Mono', Consolas, monospace;
+            font-size: 0.85rem;
+            white-space: pre-wrap;
+            max-height: 700px;
             overflow-y: auto;
         }
         .status {
@@ -75,30 +91,72 @@
         .stats {
             display: flex;
             gap: 1rem;
-            margin-top: 0;
+            flex-wrap: wrap;
         }
         .stat {
             flex: 1;
+            min-width: 200px;
             background: #ddf4ff;
             border-left: 4px solid #0969da;
             padding: 0.8rem;
             border-radius: 6px;
         }
         .stat strong { display: block; font-size: 1.4rem; color: #0969da; }
+        .stat.verde { background: #dafbe1; border-left-color: #2ea44f; }
+        .stat.verde strong { color: #1a7f37; }
+        .stat.naranja { background: #fff8c5; border-left-color: #d4a72c; }
+        .stat.naranja strong { color: #7d4e00; }
+        .stat.morado { background: #f3e5ff; border-left-color: #8250df; }
+        .stat.morado strong { color: #6f42c1; }
+        .config-row {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin: 0.8rem 0;
+        }
+        .config-row label {
+            display: flex;
+            flex-direction: column;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #57606a;
+            flex: 1;
+            min-width: 220px;
+        }
+        .config-row input {
+            margin-top: 0.3rem;
+            padding: 0.5rem;
+            border: 1px solid #d0d7de;
+            border-radius: 6px;
+            font-size: 0.95rem;
+        }
     </style>
 </head>
 <body>
 
     <h1>📊 Filtro de Trámites</h1>
-    <p>Filtra registros de <em>Trámite en proceso</em> y <em>Urgencia Vital</em> con tipo <em>Remisión</em>.</p>
+    <p>Filtra registros y genera una <strong>entrega de turno</strong> formateada.</p>
 
     <div class="card">
         <label for="file-input"><strong>1. Selecciona el archivo Excel (.xlsx):</strong></label>
         <input type="file" id="file-input" accept=".xlsx,.xls" />
+
+        <div class="config-row">
+            <label>
+                Aux. Referencia (quien entrega):
+                <input type="text" id="aux-referencia" placeholder="Ej: LIZ CABRILES" />
+            </label>
+            <label>
+                Recibe Aux Referencia:
+                <input type="text" id="recibe-aux" placeholder="Ej: BLADIMIR REALES" />
+            </label>
+        </div>
+
         <div id="loading">⏳ Cargando Python y procesando... (la primera vez tarda unos segundos)</div>
-        <div style="margin-top: 1rem;">
+        <div style="margin-top: 0.5rem;">
             <button id="process-btn">Procesar archivo</button>
-            <button id="download-btn" style="display:none;">⬇️ Descargar resultados</button>
+            <button id="download-btn" style="display:none;">⬇️ Descargar Excel</button>
+            <button id="copy-btn" style="display:none;">📋 Copiar entrega</button>
         </div>
     </div>
 
@@ -107,8 +165,17 @@
     </div>
 
     <div class="card">
-        <div id="status" class="status">Esperando archivo a ver si funciona...</div>
-        <div id="output" class="output">Aquí verás los registros filtrados.</div>
+        <div id="status" class="status">Esperando archivo...</div>
+    </div>
+
+    <div class="card">
+        <h2>📝 Entrega de turno</h2>
+        <div id="turno" class="turno">Aquí verás la entrega de turno generada.</div>
+    </div>
+
+    <div class="card">
+        <h2>🔍 Detalle / depuración</h2>
+        <div id="output" class="output">Aquí verás los registros filtrados y el diagnóstico.</div>
     </div>
 
     <py-config>
@@ -123,6 +190,7 @@ from pyodide.ffi import create_proxy
 
 # ---------- Estado global ----------
 resultado_bytes = None
+texto_turno = ""
 
 
 # ---------- Utilidades ----------
@@ -136,11 +204,14 @@ def set_output(msg):
     document.getElementById("output").innerText = msg
 
 
+def set_turno(msg):
+    document.getElementById("turno").innerText = msg
+
+
 def mostrar_loading(show):
     document.getElementById("loading").style.display = "block" if show else "none"
 
 
-# ---------- Carga del archivo ----------
 async def leer_archivo():
     file_input = document.getElementById("file-input")
     if not file_input.files.length:
@@ -151,14 +222,57 @@ async def leer_archivo():
     return BytesIO(bytes(data))
 
 
+def crear_stat(container, valor, texto, clase_extra=""):
+    d = document.createElement("div")
+    d.className = "stat " + clase_extra
+    s = document.createElement("strong")
+    s.innerText = str(valor)
+    d.appendChild(s)
+    d.appendChild(document.createTextNode(texto))
+    container.appendChild(d)
+
+
+def fecha_actual_formateada():
+    from js import Date
+    d = Date.new()
+    dia = str(d.getDate()).zfill(2)
+    mes = str(d.getMonth() + 1).zfill(2)
+    anio = d.getFullYear()
+    hora = str(d.getHours()).zfill(2)
+    minuto = str(d.getMinutes()).zfill(2)
+    return f"{dia}/{mes}/{anio} {hora}:{minuto}"
+
+
+# ---------- Normalización de texto ----------
+def norm(v):
+    if v is None:
+        return ""
+    s = str(v)
+    s = s.replace("\u00A0", " ").replace("\n", " ").replace("\r", " ").replace("\t", " ")
+    s = " ".join(s.split())
+    return s.strip().upper()
+
+
+def formatear_fila(fila):
+    partes = []
+    for v in fila:
+        if v is None or str(v).strip() == "":
+            continue
+        partes.append(str(v).strip())
+    # Salto de línea final para separar visualmente cada paciente
+    return "\t".join(partes) + "\n"
+
+
 # ---------- Lógica principal ----------
 async def procesar_archivo(event=None):
-    global resultado_bytes
+    global resultado_bytes, texto_turno
 
     mostrar_loading(True)
     set_status("⏳ Procesando archivo...", "loading")
     set_output("Trabajando...")
+    set_turno("Generando...")
     document.getElementById("download-btn").style.display = "none"
+    document.getElementById("copy-btn").style.display = "none"
     document.getElementById("stats").style.display = "none"
 
     try:
@@ -166,6 +280,7 @@ async def procesar_archivo(event=None):
         if bytes_io is None:
             set_status("⚠️ Selecciona primero un archivo Excel.", "error")
             set_output("")
+            set_turno("")
             mostrar_loading(False)
             return
 
@@ -173,6 +288,7 @@ async def procesar_archivo(event=None):
         wb = openpyxl.load_workbook(bytes_io)
         ws = wb.active
 
+        # --- Nombres de columnas a buscar ---
         columna_filtro1 = "TRAMITE CERRADO/ABIERTO"
         valor_filtro1 = "Tramite en proceso"
 
@@ -182,22 +298,34 @@ async def procesar_archivo(event=None):
         columna_filtro3 = "TIPO DE TRAMITE"
         valor_filtro3 = "REMISION"
 
-        columnas_deseadas = ["NOMBRE", "APELLIDO", "FUNCIONARIO"]
+        columna_filtro4 = "ESTADO DEL TRAMITE"
+        valor_filtro4 = "SE INFORMA"
 
-        indices = {}
-        filtro_index1 = None
-        filtro_index2 = None
-        filtro_index3 = None
+        tipo_remision = "REMISION"
+        tipo_cita = "CITA"
 
+        COL_FIN_EXCEL = 26
+        COL_FIN_SALIDA = 13
+
+        # ---------- Encabezados ----------
+        headers_full = []
+        for i in range(1, COL_FIN_EXCEL + 1):
+            cell = ws.cell(row=1, column=i)
+            headers_full.append(cell.value if cell.value is not None else ("COL_" + str(i)))
+
+        headers_salida = headers_full[:COL_FIN_SALIDA]
+
+        # ---------- Detección de índices ----------
+        idx_por_nombre = {}
         for i, cell in enumerate(ws[1], start=1):
-            if cell.value == columna_filtro1:
-                filtro_index1 = i
-            if cell.value == columna_filtro2:
-                filtro_index2 = i
-            if cell.value == columna_filtro3:
-                filtro_index3 = i
-            if cell.value in columnas_deseadas:
-                indices[cell.value] = i
+            key = norm(cell.value)
+            if key and key not in idx_por_nombre:
+                idx_por_nombre[key] = i
+
+        filtro_index1 = idx_por_nombre.get(norm(columna_filtro1))
+        filtro_index2 = idx_por_nombre.get(norm(columna_filtro2))
+        filtro_index3 = idx_por_nombre.get(norm(columna_filtro3))
+        filtro_index4 = idx_por_nombre.get(norm(columna_filtro4))
 
         if filtro_index1 is None:
             raise ValueError("No se encontró la columna '" + columna_filtro1 + "'")
@@ -205,109 +333,237 @@ async def procesar_archivo(event=None):
             raise ValueError("No se encontró la columna '" + columna_filtro2 + "'")
         if filtro_index3 is None:
             raise ValueError("No se encontró la columna '" + columna_filtro3 + "'")
+        if filtro_index4 is None:
+            raise ValueError("No se encontró la columna '" + columna_filtro4 + "'")
 
-        console.log("Columnas encontradas: " + str(indices))
+        idx_estado_tramite = filtro_index4
+        idx_tipo_tramite = filtro_index3
 
-        # ---------- Filtro 1 ----------
+        if idx_estado_tramite > COL_FIN_EXCEL:
+            raise ValueError(
+                "La columna '" + columna_filtro4 + "' está en la posición "
+                + str(idx_estado_tramite) + " (más allá de Z). Amplía COL_FIN_EXCEL."
+            )
+
+        def extraer_fila(row, limite):
+            fila = []
+            for i in range(1, limite + 1):
+                fila.append(row[i - 1] if (i - 1) < len(row) else None)
+            return fila
+
+        # ---------- Diagnóstico ----------
+        valores_estado = {}
+        valores_tipo = {}
+        for row in ws.iter_rows(min_row=2, values_only=True):
+            vs = row[idx_estado_tramite - 1] if (idx_estado_tramite - 1) < len(row) else None
+            vt = row[idx_tipo_tramite - 1] if (idx_tipo_tramite - 1) < len(row) else None
+            ks = norm(vs)
+            kt = norm(vt)
+            valores_estado[ks] = valores_estado.get(ks, 0) + 1
+            valores_tipo[kt] = valores_tipo.get(kt, 0) + 1
+
+        # ---------- FILTROS ----------
         resumen_filtro1 = []
-        for row in ws.iter_rows(min_row=2, values_only=True):
-            v1 = row[filtro_index1 - 1]
-            v3 = row[filtro_index3 - 1]
-            if (v1 and str(v1).strip().upper() == valor_filtro1.upper()
-                and v3 and str(v3).strip().upper() == valor_filtro3.upper()):
-                resumen_filtro1.append({col: row[idx - 1] for col, idx in indices.items()})
-        contador1 = len(resumen_filtro1)
-
-        # ---------- Filtro 2 ----------
         resumen_filtro2 = []
-        for row in ws.iter_rows(min_row=2, values_only=True):
-            v2 = row[filtro_index2 - 1]
-            v3 = row[filtro_index3 - 1]
-            if (v2 and valor_filtro2 in str(v2).upper()
-                and v3 and str(v3).strip().upper() == valor_filtro3.upper()):
-                resumen_filtro2.append({col: row[idx - 1] for col, idx in indices.items()})
-        contador2 = len(resumen_filtro2)
+        resumen_filtro3 = []
+        resumen_citas_tramite = []
+        resumen_citas_asignadas = []
 
-        # ========== GENERAR EXCEL DE SALIDA ==========
+        for row in ws.iter_rows(min_row=2, values_only=True):
+            v1 = row[filtro_index1 - 1] if (filtro_index1 - 1) < len(row) else None
+            v2 = row[filtro_index2 - 1] if (filtro_index2 - 1) < len(row) else None
+            v3 = row[filtro_index3 - 1] if (filtro_index3 - 1) < len(row) else None
+            v4 = row[filtro_index4 - 1] if (filtro_index4 - 1) < len(row) else None
+
+            n1 = norm(v1)
+            n2 = norm(v2)
+            n3 = norm(v3)
+            n4 = norm(v4)
+
+            en_proceso = (n1 == norm(valor_filtro1))
+            es_remision = (n3 == norm(tipo_remision))
+            es_cita = (n3 == norm(tipo_cita))
+            es_se_informa = (n4 == norm(valor_filtro4))
+
+            # Remisiones
+            if en_proceso and es_remision:
+                resumen_filtro1.append(extraer_fila(row, COL_FIN_EXCEL))
+
+            if (n2 and norm(valor_filtro2) in n2) and es_remision and en_proceso:
+                resumen_filtro2.append(extraer_fila(row, COL_FIN_EXCEL))
+
+            if es_se_informa and es_remision and en_proceso:
+                resumen_filtro3.append(extraer_fila(row, COL_FIN_EXCEL))
+
+            # Citas
+            if es_cita and en_proceso:
+                resumen_citas_tramite.append(extraer_fila(row, COL_FIN_EXCEL))
+
+            if es_cita and en_proceso and es_se_informa:
+                resumen_citas_asignadas.append(extraer_fila(row, COL_FIN_EXCEL))
+
+        contador1 = len(resumen_filtro1)
+        contador2 = len(resumen_filtro2)
+        contador3 = len(resumen_filtro3)
+        contador_citas_tramite = len(resumen_citas_tramite)
+        contador_citas_asignadas = len(resumen_citas_asignadas)
+
+        # ---------- ACEPTADOS GENERAL ----------
+        aceptados_general = []
+        vistos = set()
+        for f in resumen_filtro3:
+            clave = tuple(str(x) for x in f)
+            if clave not in vistos:
+                vistos.add(clave)
+                aceptados_general.append(f)
+        total_aceptados_general = len(aceptados_general)
+
+        # ---------- Total remisiones ----------
+        claves = set()
+        for f in resumen_filtro1 + resumen_filtro2 + resumen_filtro3:
+            claves.add(tuple(str(x) for x in f))
+        total_remisiones = len(claves)
+
+        # ========== EXCEL DE SALIDA ==========
         wb_out = openpyxl.Workbook()
         ws1 = wb_out.active
-        ws1.title = "Tramite en proceso"
+        ws1.title = "Remisiones en proceso"
         ws2 = wb_out.create_sheet("Urgencia Vital")
+        ws3 = wb_out.create_sheet("Remisiones SE INFORMA")
+        ws4 = wb_out.create_sheet("Citas en tramite")
+        ws5 = wb_out.create_sheet("Citas SE INFORMA")
 
-        headers = list(indices.keys())
-        ws1.append(headers)
-        ws2.append(headers)
+        ws1.append(headers_salida)
+        ws2.append(headers_salida)
+        ws3.append(headers_salida)
+        ws4.append(headers_salida)
+        ws5.append(headers_salida)
 
-        for reg in resumen_filtro1:
-            ws1.append([reg.get(c) for c in headers])
-        for reg in resumen_filtro2:
-            ws2.append([reg.get(c) for c in headers])
+        for fila in resumen_filtro1:
+            ws1.append(fila[:COL_FIN_SALIDA])
+        for fila in resumen_filtro2:
+            ws2.append(fila[:COL_FIN_SALIDA])
+        for fila in resumen_filtro3:
+            ws3.append(fila[:COL_FIN_SALIDA])
+        for fila in resumen_citas_tramite:
+            ws4.append(fila[:COL_FIN_SALIDA])
+        for fila in resumen_citas_asignadas:
+            ws5.append(fila[:COL_FIN_SALIDA])
 
         buffer_out = BytesIO()
         wb_out.save(buffer_out)
         resultado_bytes = buffer_out.getvalue()
 
-        # ========== ESTADÍSTICAS (sin innerHTML) ==========
+        # ========== ENTREGA DE TURNO ==========
+        aux_ref = document.getElementById("aux-referencia").value or "(sin especificar)"
+        recibe_aux = document.getElementById("recibe-aux").value or "(sin especificar)"
+        fecha_hora = fecha_actual_formateada()
+
+        lineas = []
+        lineas.append("*Entrega de turno* " + fecha_hora)
+        lineas.append("")
+        lineas.append("*Aux. Referencia:* " + aux_ref)
+        lineas.append("")
+        lineas.append("*Total remisiones:* " + str(total_remisiones))
+        lineas.append("")
+        lineas.append("*Aceptados:* " + str(total_aceptados_general))
+        lineas.append("")
+        for f in aceptados_general[:50]:
+            lineas.append(formatear_fila(f[:COL_FIN_SALIDA]))
+
+        lineas.append("")
+        lineas.append("")
+        lineas.append("*URGENCIAS VITAL:* " + str(contador2).zfill(2))
+        lineas.append("")
+        for f in resumen_filtro2[:50]:
+            lineas.append(formatear_fila(f[:COL_FIN_SALIDA]))
+
+        lineas.append("")
+        lineas.append("")
+        # CITAS EN TRAMITE: solo el número total
+        lineas.append("*CITAS EN TRAMITE:* " + str(contador_citas_tramite))
+
+        lineas.append("")
+        lineas.append("")
+        lineas.append("*PACIENTES CON CITA ASIGNADAS:* " + str(contador_citas_asignadas))
+        lineas.append("")
+        for f in resumen_citas_asignadas[:50]:
+            lineas.append(formatear_fila(f[:COL_FIN_SALIDA]))
+
+        lineas.append("")
+        lineas.append("")
+        lineas.append("*CORREO SIN TRAMITES POR APERTURA:*")
+        lineas.append("")
+        lineas.append("*HOSVITAL PACIENTES  PARA  INICIO DE CONTRAREMISION:* 0")
+        lineas.append("")
+        lineas.append("*Recibe Aux Referencia:* " + recibe_aux)
+
+        texto_turno = "\n".join(lineas)
+        set_turno(texto_turno)
+
+        # ========== ESTADÍSTICAS ==========
         stats_el = document.getElementById("stats")
-        # Limpiar
         while stats_el.firstChild:
             stats_el.removeChild(stats_el.firstChild)
 
-        # Primer stat
-        d1 = document.createElement("div"); d1.className = "stat"
-        s1 = document.createElement("strong"); s1.innerText = str(contador1)
-        d1.appendChild(s1)
-        d1.appendChild(document.createTextNode("Trámite en proceso (REMISIÓN)"))
-        stats_el.appendChild(d1)
-
-        # Segundo stat
-        d2 = document.createElement("div"); d2.className = "stat"
-        s2 = document.createElement("strong"); s2.innerText = str(contador2)
-        d2.appendChild(s2)
-        d2.appendChild(document.createTextNode("Urgencia Vital (REMISIÓN)"))
-        stats_el.appendChild(d2)
-
+        crear_stat(stats_el, contador1, "Remisiones en proceso")
+        crear_stat(stats_el, contador2, "Urgencia Vital (En proceso)", "verde")
+        crear_stat(stats_el, contador3, "Remisiones SE INFORMA", "naranja")
+        crear_stat(stats_el, contador_citas_tramite, "Citas en trámite", "morado")
+        crear_stat(stats_el, contador_citas_asignadas, "Citas asignadas (SE INFORMA)", "morado")
         stats_el.style.display = "flex"
 
-        # ========== VISTA PREVIA EN TEXTO ==========
-        lineas = []
-        lineas.append("=== FILTRO 1: Trámite en proceso (solo REMISIÓN) ===")
-        lineas.append("Total: " + str(contador1) + "\n")
-        for r in resumen_filtro1[:20]:
-            lineas.append(str(r))
-        if contador1 > 20:
-            lineas.append("... y " + str(contador1 - 20) + " más (ver Excel descargado)")
+        # ========== DIAGNÓSTICO ==========
+        lineas_debug = []
+        lineas_debug.append("=== DIAGNÓSTICO ===")
+        lineas_debug.append("Índice col ESTADO DEL TRAMITE: " + str(idx_estado_tramite) + "  (" + str(headers_full[idx_estado_tramite-1]) + ")")
+        lineas_debug.append("Índice col TIPO DE TRAMITE: " + str(idx_tipo_tramite))
+        lineas_debug.append("")
+        lineas_debug.append("Valores ÚNICOS en TIPO DE TRAMITE (normalizados):")
+        for k, c in sorted(valores_tipo.items(), key=lambda x: -x[1]):
+            lineas_debug.append("  ['" + k + "']  →  " + str(c) + " filas")
+        lineas_debug.append("")
+        lineas_debug.append("Valores ÚNICOS en ESTADO DEL TRAMITE (normalizados):")
+        for k, c in sorted(valores_estado.items(), key=lambda x: -x[1]):
+            lineas_debug.append("  ['" + k + "']  →  " + str(c) + " filas")
+        lineas_debug.append("")
+        lineas_debug.append("=== CONTADORES (todos exigen 'Tramite en proceso') ===")
+        lineas_debug.append("Remisiones en proceso: " + str(contador1))
+        lineas_debug.append("Urgencia Vital: " + str(contador2))
+        lineas_debug.append("Remisiones SE INFORMA (Aceptados): " + str(contador3))
+        lineas_debug.append("Citas en trámite: " + str(contador_citas_tramite))
+        lineas_debug.append("Citas asignadas (SE INFORMA): " + str(contador_citas_asignadas))
+        lineas_debug.append("")
+        lineas_debug.append("--- Primeros 5 citas asignadas ---")
+        for r in resumen_citas_asignadas[:5]:
+            lineas_debug.append(str(r[:COL_FIN_SALIDA]))
 
-        lineas.append("")
-        lineas.append("=" * 55)
-        lineas.append("")
-        lineas.append("=== FILTRO 2: Observación contiene 'URGENCIA VITAL' (solo REMISIÓN) ===")
-        lineas.append("Total: " + str(contador2) + "\n")
-        for r in resumen_filtro2[:20]:
-            lineas.append(str(r))
-        if contador2 > 20:
-            lineas.append("... y " + str(contador2 - 20) + " más (ver Excel descargado)")
-
-        set_output("\n".join(lineas))
-        set_status("✅ Procesado. " + str(contador1 + contador2) + " registros encontrados en total.", "ok")
+        set_output("\n".join(lineas_debug))
+        set_status(
+            "✅ Procesado. " + str(total_remisiones) + " remisiones, "
+            + str(total_aceptados_general) + " aceptados, "
+            + str(contador_citas_tramite) + " citas en trámite, "
+            + str(contador_citas_asignadas) + " citas asignadas.",
+            "ok"
+        )
         document.getElementById("download-btn").style.display = "inline-block"
+        document.getElementById("copy-btn").style.display = "inline-block"
 
     except Exception as e:
         set_status("❌ Error: " + str(e), "error")
         set_output(str(e))
+        set_turno("Error: " + str(e))
         console.error(str(e))
     finally:
         mostrar_loading(False)
 
 
-# ---------- Descargar resultado ----------
+# ---------- Descargar Excel ----------
 def descargar_resultado(event=None):
     global resultado_bytes
     if resultado_bytes is None:
         return
     try:
-        # Crear Uint8Array desde los bytes de Python
-        from pyodide.ffi import to_js
         import js
         arr = Uint8Array.new(len(resultado_bytes))
         arr.assign(resultado_bytes)
@@ -325,12 +581,32 @@ def descargar_resultado(event=None):
         console.error(str(e))
 
 
-# ---------- Registrar eventos ----------
-_botón_procesar = document.getElementById("process-btn")
-_botón_procesar.addEventListener("click", create_proxy(procesar_archivo))
+# ---------- Copiar al portapapeles ----------
+async def copiar_entrega(event=None):
+    global texto_turno
+    if not texto_turno:
+        return
+    try:
+        nav = window.navigator
+        await nav.clipboard.writeText(texto_turno)
+        set_status("📋 Entrega copiada al portapapeles.", "ok")
+    except Exception as e:
+        try:
+            el = document.getElementById("turno")
+            range_ = document.createRange()
+            range_.selectNodeContents(el)
+            sel = window.getSelection()
+            sel.removeAllRanges()
+            sel.addRange(range_)
+            set_status("⚠️ No se pudo copiar. Texto seleccionado: pulsa Ctrl+C.", "loading")
+        except Exception as e2:
+            set_status("❌ No se pudo copiar: " + str(e), "error")
 
-_botón_descargar = document.getElementById("download-btn")
-_botón_descargar.addEventListener("click", create_proxy(descargar_resultado))
+
+# ---------- Registrar eventos ----------
+document.getElementById("process-btn").addEventListener("click", create_proxy(procesar_archivo))
+document.getElementById("download-btn").addEventListener("click", create_proxy(descargar_resultado))
+document.getElementById("copy-btn").addEventListener("click", create_proxy(copiar_entrega))
 
 console.log("✅ App lista. Botones registrados.")
     </script>
