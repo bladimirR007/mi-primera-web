@@ -3,613 +3,606 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Filtro de Trámites - Excel</title>
-    <link rel="stylesheet" href="https://pyscript.net/releases/2024.1.1/core.css" />
-    <script type="module" src="https://pyscript.net/releases/2024.1.1/core.js"></script>
+    <title>Centro de Herramientas</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
     <style>
-        body {
-            font-family: system-ui, -apple-system, sans-serif;
-            max-width: 1100px;
-            margin: 2rem auto;
-            padding: 1rem 1.5rem;
-            color: #24292e;
-            background: #f6f8fa;
-        }
-        h1 { margin-bottom: 0.3rem; }
-        h2 { margin-top: 0; font-size: 1.1rem; }
-        .card {
-            background: white;
-            border: 1px solid #d0d7de;
-            border-radius: 10px;
-            padding: 1.5rem;
-            margin-bottom: 1.5rem;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-        }
-        #file-input {
-            margin: 0.5rem 0;
-            padding: 0.6rem;
-            border: 1px dashed #d0d7de;
-            border-radius: 6px;
-            width: 100%;
+        * {
+            margin: 0;
+            padding: 0;
             box-sizing: border-box;
         }
-        button {
-            padding: 0.7rem 1.4rem;
-            background: #2ea44f;
+
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #ec4899;
+            --accent: #06b6d4;
+            --success: #10b981;
+            --dark: #0f172a;
+            --gray: #64748b;
+            --light: #f1f5f9;
+        }
+
+        html { scroll-behavior: smooth; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #0f172a;
+            min-height: 100vh;
+            color: #1e293b;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* Fondo animado con gradientes */
+        .background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            overflow: hidden;
+            background: #0f172a;
+        }
+
+        .blob {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.5;
+            animation: float 20s ease-in-out infinite;
+        }
+
+        .blob-1 {
+            width: 500px;
+            height: 500px;
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            top: -200px;
+            left: -200px;
+            animation-delay: 0s;
+        }
+
+        .blob-2 {
+            width: 400px;
+            height: 400px;
+            background: linear-gradient(135deg, #ec4899, #f43f5e);
+            top: 30%;
+            right: -150px;
+            animation-delay: -5s;
+        }
+
+        .blob-3 {
+            width: 450px;
+            height: 450px;
+            background: linear-gradient(135deg, #06b6d4, #0ea5e9);
+            bottom: -200px;
+            left: 30%;
+            animation-delay: -10s;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            33% { transform: translate(50px, -50px) scale(1.1); }
+            66% { transform: translate(-50px, 50px) scale(0.95); }
+        }
+
+        /* Header */
+        .header {
+            padding: 30px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: relative;
+            z-index: 10;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
             color: white;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 1rem;
-            font-weight: 600;
-            margin-right: 0.5rem;
-            margin-bottom: 0.4rem;
+            text-decoration: none;
         }
-        button:hover { background: #22863a; }
-        button:disabled { background: #94d3a2; cursor: not-allowed; }
-        #download-btn { background: #0366d6; }
-        #download-btn:hover { background: #0250a3; }
-        #copy-btn { background: #6f42c1; }
-        #copy-btn:hover { background: #5a32a3; }
-        .output {
-            background: #0d1117;
-            color: #c9d1d9;
-            padding: 1rem;
-            border-radius: 8px;
-            font-family: 'SF Mono', Consolas, monospace;
-            font-size: 0.88rem;
-            white-space: pre-wrap;
-            max-height: 500px;
-            overflow-y: auto;
+
+        .logo-icon {
+            width: 44px;
+            height: 44px;
+            background: linear-gradient(135deg, #6366f1, #ec4899);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            box-shadow: 0 8px 20px rgba(99, 102, 241, 0.4);
         }
-        .turno {
-            background: #ffffff;
-            color: #24292e;
-            padding: 1.2rem;
-            border-radius: 8px;
-            border: 1px solid #d0d7de;
-            font-family: 'SF Mono', Consolas, monospace;
+
+        .logo-text {
+            font-family: 'Poppins', sans-serif;
+            font-weight: 700;
+            font-size: 1.25rem;
+            letter-spacing: -0.5px;
+        }
+
+        .header-time {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        /* Hero */
+        .hero {
+            text-align: center;
+            padding: 40px 20px 20px;
+            position: relative;
+            z-index: 10;
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            padding: 8px 18px;
+            border-radius: 100px;
+            color: rgba(255, 255, 255, 0.9);
             font-size: 0.85rem;
-            white-space: pre-wrap;
-            max-height: 700px;
-            overflow-y: auto;
+            font-weight: 500;
+            margin-bottom: 20px;
         }
-        .status {
-            font-weight: 600;
-            margin-bottom: 0.8rem;
-            color: #57606a;
+
+        .hero-badge .dot {
+            width: 8px;
+            height: 8px;
+            background: #10b981;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
         }
-        .status.ok { color: #1a7f37; }
-        .status.error { color: #cf222e; }
-        .status.loading { color: #9a6700; }
-        #loading {
-            display: none;
-            color: #9a6700;
-            font-style: italic;
-            margin-top: 0.5rem;
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(1.2); }
         }
-        .stats {
-            display: flex;
-            gap: 1rem;
-            flex-wrap: wrap;
+
+        .hero h1 {
+            font-family: 'Poppins', sans-serif;
+            font-size: clamp(2rem, 5vw, 3.5rem);
+            font-weight: 800;
+            color: white;
+            line-height: 1.1;
+            letter-spacing: -1px;
+            margin-bottom: 16px;
         }
-        .stat {
-            flex: 1;
-            min-width: 200px;
-            background: #ddf4ff;
-            border-left: 4px solid #0969da;
-            padding: 0.8rem;
-            border-radius: 6px;
+
+        .hero h1 .gradient {
+            background: linear-gradient(135deg, #6366f1, #ec4899, #06b6d4);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
-        .stat strong { display: block; font-size: 1.4rem; color: #0969da; }
-        .stat.verde { background: #dafbe1; border-left-color: #2ea44f; }
-        .stat.verde strong { color: #1a7f37; }
-        .stat.naranja { background: #fff8c5; border-left-color: #d4a72c; }
-        .stat.naranja strong { color: #7d4e00; }
-        .stat.morado { background: #f3e5ff; border-left-color: #8250df; }
-        .stat.morado strong { color: #6f42c1; }
-        .config-row {
-            display: flex;
-            gap: 1rem;
-            flex-wrap: wrap;
-            margin: 0.8rem 0;
+
+        .hero p {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 1.1rem;
+            max-width: 600px;
+            margin: 0 auto;
+            line-height: 1.6;
         }
-        .config-row label {
+
+        /* Grid de programas */
+        .programs {
+            max-width: 1200px;
+            margin: 60px auto;
+            padding: 0 40px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 30px;
+            position: relative;
+            z-index: 10;
+        }
+
+        .program-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 24px;
+            padding: 40px 32px;
+            text-decoration: none;
+            color: inherit;
             display: flex;
             flex-direction: column;
-            font-size: 0.85rem;
-            font-weight: 600;
-            color: #57606a;
-            flex: 1;
-            min-width: 220px;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 
+                0 20px 40px rgba(0, 0, 0, 0.15),
+                0 0 0 1px rgba(255, 255, 255, 0.05) inset;
         }
-        .config-row input {
-            margin-top: 0.3rem;
-            padding: 0.5rem;
-            border: 1px solid #d0d7de;
-            border-radius: 6px;
+
+        .program-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--card-color-1), var(--card-color-2));
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.4s ease;
+        }
+
+        .program-card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .program-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 
+                0 30px 60px rgba(0, 0, 0, 0.25),
+                0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+        }
+
+        .program-card:active {
+            transform: translateY(-4px) scale(0.99);
+        }
+
+        .card-icon {
+            width: 72px;
+            height: 72px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 24px;
+            position: relative;
+            background: linear-gradient(135deg, var(--card-color-1), var(--card-color-2));
+            box-shadow: 0 12px 24px var(--card-shadow);
+        }
+
+        .card-icon svg {
+            width: 36px;
+            height: 36px;
+            stroke: white;
+            stroke-width: 2;
+            fill: none;
+        }
+
+        .card-icon::after {
+            content: '';
+            position: absolute;
+            inset: -4px;
+            border-radius: 24px;
+            background: linear-gradient(135deg, var(--card-color-1), var(--card-color-2));
+            opacity: 0.2;
+            z-index: -1;
+            filter: blur(8px);
+        }
+
+        .program-card h2 {
+            font-family: 'Poppins', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #0f172a;
+            margin-bottom: 12px;
+            letter-spacing: -0.5px;
+        }
+
+        .program-card p {
+            color: #64748b;
             font-size: 0.95rem;
+            line-height: 1.6;
+            margin-bottom: 24px;
+            flex-grow: 1;
         }
+
+        .card-features {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 24px;
+        }
+
+        .feature-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 6px 12px;
+            border-radius: 100px;
+            background: #f1f5f9;
+            color: #475569;
+        }
+
+        .feature-tag .tag-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--card-color-1);
+        }
+
+        .card-cta {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-top: 20px;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        .cta-text {
+            font-weight: 600;
+            font-size: 0.95rem;
+            color: var(--card-color-1);
+        }
+
+        .cta-arrow {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, var(--card-color-1), var(--card-color-2));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.3s ease;
+        }
+
+        .cta-arrow svg {
+            width: 20px;
+            height: 20px;
+            stroke: white;
+            stroke-width: 2.5;
+            fill: none;
+        }
+
+        .program-card:hover .cta-arrow {
+            transform: translateX(4px) rotate(-45deg);
+        }
+
+        /* Card específica 1: HC a Excel */
+        .card-hc {
+            --card-color-1: #6366f1;
+            --card-color-2: #8b5cf6;
+            --card-shadow: rgba(99, 102, 241, 0.35);
+        }
+
+        /* Card específica 2: Entrega de turno */
+        .card-turno {
+            --card-color-1: #ec4899;
+            --card-color-2: #f43f5e;
+            --card-shadow: rgba(236, 72, 153, 0.35);
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 40px 20px;
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 0.9rem;
+            position: relative;
+            z-index: 10;
+        }
+
+        .footer strong {
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        /* Estadísticas */
+        .stats {
+            max-width: 1200px;
+            margin: 60px auto 0;
+            padding: 0 40px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 20px;
+            position: relative;
+            z-index: 10;
+        }
+
+        .stat {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 24px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .stat:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .stat-number {
+            font-family: 'Poppins', sans-serif;
+            font-size: 2rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #6366f1, #ec4899);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            line-height: 1;
+            margin-bottom: 8px;
+        }
+
+        .stat-label {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.85rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header { padding: 20px; }
+            .header-time { display: none; }
+            .hero { padding: 20px 20px 10px; }
+            .programs { padding: 0 20px; margin: 40px auto; }
+            .stats { padding: 0 20px; margin-top: 40px; }
+            .program-card { padding: 32px 24px; }
+            .card-icon { width: 64px; height: 64px; margin-bottom: 20px; }
+            .card-icon svg { width: 32px; height: 32px; }
+        }
+
+        /* Animación de entrada */
+        @keyframes fadeUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .animate-in {
+            animation: fadeUp 0.6s ease forwards;
+            opacity: 0;
+        }
+
+        .delay-1 { animation-delay: 0.1s; }
+        .delay-2 { animation-delay: 0.2s; }
+        .delay-3 { animation-delay: 0.3s; }
+        .delay-4 { animation-delay: 0.4s; }
     </style>
 </head>
 <body>
+    <div class="background">
+        <div class="blob blob-1"></div>
+        <div class="blob blob-2"></div>
+        <div class="blob blob-3"></div>
+    </div>
 
-    <h1>📊 Filtro de Trámites</h1>
-    <p>Filtra registros y genera una <strong>entrega de turno</strong> formateada.</p>
+    <header class="header">
+        <a href="index.html" class="logo">
+            <div class="logo-icon">🏥</div>
+            <span class="logo-text">Centro de Herramientas</span>
+        </a>
+        <div class="header-time" id="headerTime"></div>
+    </header>
 
-    <div class="card">
-        <label for="file-input"><strong>1. Selecciona el archivo Excel (.xlsx):</strong></label>
-        <input type="file" id="file-input" accept=".xlsx,.xls" />
-
-        <div class="config-row">
-            <label>
-                Aux. Referencia (quien entrega):
-                <input type="text" id="aux-referencia" value="BLADIMIR REALES"/>
-            </label>
-            <label>
-                Recibe Aux Referencia:
-                <input type="text" id="recibe-aux"/>
-            </label>
+    <section class="hero">
+        <div class="hero-badge animate-in">
+            <span class="dot"></span>
+            <span>Sistema activo</span>
         </div>
+        <h1 class="animate-in delay-1">
+            Bienvenido a tu <span class="gradient">Centro de Herramientas</span>
+        </h1>
+        <p class="animate-in delay-2">
+            Selecciona uno de los programas disponibles para comenzar a procesar la información que necesitas.
+        </p>
+    </section>
 
-        <div id="loading">⏳ Cargando Python y procesando... (la primera vez tarda unos segundos)</div>
-        <div style="margin-top: 0.5rem;">
-            <button id="process-btn">Procesar archivo</button>
-            <button id="download-btn" style="display:none;">⬇️ Descargar Excel</button>
-            <button id="copy-btn" style="display:none;">📋 Copiar entrega</button>
+    <section class="programs">
+        <!-- Programa 1: HC a Excel -->
+        <a href="leer_historia/index.html" class="program-card card-hc animate-in delay-3">
+            <div class="card-icon">
+                <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                    <line x1="9" y1="15" x2="15" y2="15"></line>
+                    <line x1="9" y1="11" x2="15" y2="11"></line>
+                </svg>
+            </div>
+            <h2>Historia Clínica a Excel</h2>
+            <p>
+                Extrae automáticamente los datos de una HC en PDF y prepáralos para tu Excel maestro: nombre, documento, edad, EPS, servicio requerido y más.
+            </p>
+            <div class="card-features">
+                <span class="feature-tag"><span class="tag-dot"></span>PDF</span>
+                <span class="feature-tag"><span class="tag-dot"></span>Excel</span>
+                <span class="feature-tag"><span class="tag-dot"></span>11 campos</span>
+            </div>
+            <div class="card-cta">
+                <span class="cta-text">Abrir programa</span>
+                <div class="cta-arrow">
+                    <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                        <polyline points="12 5 19 12 12 19"></polyline>
+                    </svg>
+                </div>
+            </div>
+        </a>
+
+        <!-- Programa 2: Entrega de turno -->
+        <a href="entrega_de_turno/index.html" class="program-card card-turno animate-in delay-4">
+            <div class="card-icon">
+                <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+            </div>
+            <h2>Entrega de Turno</h2>
+            <p>
+                Registra y organiza la entrega de turno de manera rápida: funcionario, novedades, pacientes pendientes y observaciones generales.
+            </p>
+            <div class="card-features">
+                <span class="feature-tag"><span class="tag-dot"></span>Registro</span>
+                <span class="feature-tag"><span class="tag-dot"></span>Novedades</span>
+                <span class="feature-tag"><span class="tag-dot"></span>Export</span>
+            </div>
+            <div class="card-cta">
+                <span class="cta-text">Abrir programa</span>
+                <div class="cta-arrow">
+                    <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                        <polyline points="12 5 19 12 12 19"></polyline>
+                    </svg>
+                </div>
+            </div>
+        </a>
+    </section>
+
+    <section class="stats">
+        <div class="stat animate-in delay-3">
+            <div class="stat-number">2</div>
+            <div class="stat-label">Programas</div>
         </div>
-    </div>
-
-    <div class="card">
-        <div id="stats" class="stats" style="display:none;"></div>
-    </div>
-
-    <div class="card">
-        <div id="status" class="status">Esperando archivo...</div>
-    </div>
-
-    <div class="card">
-        <h2>📝 Entrega de turno</h2>
-        <div id="turno" class="turno">Aquí verás la entrega de turno generada.</div>
-    </div>
-
-    <div class="card">
-        <h2>🔍 Detalle / depuración</h2>
-        <div id="output" class="output">Aquí verás los registros filtrados y el diagnóstico.</div>
-    </div>
-
-    <py-config>
-        packages = ["openpyxl"]
-    </py-config>
-
-    <script type="py">
-import openpyxl
-from io import BytesIO
-from js import document, Uint8Array, window, console
-from pyodide.ffi import create_proxy
-
-# ---------- Estado global ----------
-resultado_bytes = None
-texto_turno = ""
-
-
-# ---------- Utilidades ----------
-def set_status(msg, tipo="ok"):
-    el = document.getElementById("status")
-    el.innerText = msg
-    el.className = "status " + tipo
-
-
-def set_output(msg):
-    document.getElementById("output").innerText = msg
-
-
-def set_turno(msg):
-    document.getElementById("turno").innerText = msg
-
-
-def mostrar_loading(show):
-    document.getElementById("loading").style.display = "block" if show else "none"
-
-
-async def leer_archivo():
-    file_input = document.getElementById("file-input")
-    if not file_input.files.length:
-        return None
-    file = file_input.files.item(0)
-    buffer = await file.arrayBuffer()
-    data = Uint8Array.new(buffer).to_py()
-    return BytesIO(bytes(data))
-
-
-def crear_stat(container, valor, texto, clase_extra=""):
-    d = document.createElement("div")
-    d.className = "stat " + clase_extra
-    s = document.createElement("strong")
-    s.innerText = str(valor)
-    d.appendChild(s)
-    d.appendChild(document.createTextNode(texto))
-    container.appendChild(d)
-
-
-def fecha_actual_formateada():
-    from js import Date
-    d = Date.new()
-    dia = str(d.getDate()).zfill(2)
-    mes = str(d.getMonth() + 1).zfill(2)
-    anio = d.getFullYear()
-    hora = str(d.getHours()).zfill(2)
-    minuto = str(d.getMinutes()).zfill(2)
-    return f"{dia}/{mes}/{anio} {hora}:{minuto}"
-
-
-# ---------- Normalización de texto ----------
-def norm(v):
-    if v is None:
-        return ""
-    s = str(v)
-    s = s.replace("\u00A0", " ").replace("\n", " ").replace("\r", " ").replace("\t", " ")
-    s = " ".join(s.split())
-    return s.strip().upper()
-
-
-def formatear_fila(fila):
-    partes = []
-    for v in fila:
-        if v is None or str(v).strip() == "":
-            continue
-        partes.append(str(v).strip())
-    # Salto de línea final para separar visualmente cada paciente
-    return "\t".join(partes) + "\n"
-
-
-# ---------- Lógica principal ----------
-async def procesar_archivo(event=None):
-    global resultado_bytes, texto_turno
-
-    mostrar_loading(True)
-    set_status("⏳ Procesando archivo...", "loading")
-    set_output("Trabajando...")
-    set_turno("Generando...")
-    document.getElementById("download-btn").style.display = "none"
-    document.getElementById("copy-btn").style.display = "none"
-    document.getElementById("stats").style.display = "none"
-
-    try:
-        bytes_io = await leer_archivo()
-        if bytes_io is None:
-            set_status("⚠️ Selecciona primero un archivo Excel.", "error")
-            set_output("")
-            set_turno("")
-            mostrar_loading(False)
-            return
-
-        # ========== CARGA DEL EXCEL ==========
-        wb = openpyxl.load_workbook(bytes_io)
-        ws = wb.active
-
-        # --- Nombres de columnas a buscar ---
-        columna_filtro1 = "TRAMITE CERRADO/ABIERTO"
-        valor_filtro1 = "Tramite en proceso"
-
-        columna_filtro2 = "OBSERVACION"
-        valor_filtro2 = "URGENCIA VITAL"
-
-        columna_filtro3 = "TIPO DE TRAMITE"
-        valor_filtro3 = "REMISION"
-
-        columna_filtro4 = "ESTADO DEL TRAMITE"
-        valor_filtro4 = "SE INFORMA"
-
-        tipo_remision = "REMISION"
-        tipo_cita = "CITA"
-
-        COL_FIN_EXCEL = 26
-        COL_FIN_SALIDA = 13
-
-        # ---------- Encabezados ----------
-        headers_full = []
-        for i in range(1, COL_FIN_EXCEL + 1):
-            cell = ws.cell(row=1, column=i)
-            headers_full.append(cell.value if cell.value is not None else ("COL_" + str(i)))
-
-        headers_salida = headers_full[:COL_FIN_SALIDA]
-
-        # ---------- Detección de índices ----------
-        idx_por_nombre = {}
-        for i, cell in enumerate(ws[1], start=1):
-            key = norm(cell.value)
-            if key and key not in idx_por_nombre:
-                idx_por_nombre[key] = i
-
-        filtro_index1 = idx_por_nombre.get(norm(columna_filtro1))
-        filtro_index2 = idx_por_nombre.get(norm(columna_filtro2))
-        filtro_index3 = idx_por_nombre.get(norm(columna_filtro3))
-        filtro_index4 = idx_por_nombre.get(norm(columna_filtro4))
-
-        if filtro_index1 is None:
-            raise ValueError("No se encontró la columna '" + columna_filtro1 + "'")
-        if filtro_index2 is None:
-            raise ValueError("No se encontró la columna '" + columna_filtro2 + "'")
-        if filtro_index3 is None:
-            raise ValueError("No se encontró la columna '" + columna_filtro3 + "'")
-        if filtro_index4 is None:
-            raise ValueError("No se encontró la columna '" + columna_filtro4 + "'")
-
-        idx_estado_tramite = filtro_index4
-        idx_tipo_tramite = filtro_index3
-
-        if idx_estado_tramite > COL_FIN_EXCEL:
-            raise ValueError(
-                "La columna '" + columna_filtro4 + "' está en la posición "
-                + str(idx_estado_tramite) + " (más allá de Z). Amplía COL_FIN_EXCEL."
-            )
-
-        def extraer_fila(row, limite):
-            fila = []
-            for i in range(1, limite + 1):
-                fila.append(row[i - 1] if (i - 1) < len(row) else None)
-            return fila
-
-        # ---------- Diagnóstico ----------
-        valores_estado = {}
-        valores_tipo = {}
-        for row in ws.iter_rows(min_row=2, values_only=True):
-            vs = row[idx_estado_tramite - 1] if (idx_estado_tramite - 1) < len(row) else None
-            vt = row[idx_tipo_tramite - 1] if (idx_tipo_tramite - 1) < len(row) else None
-            ks = norm(vs)
-            kt = norm(vt)
-            valores_estado[ks] = valores_estado.get(ks, 0) + 1
-            valores_tipo[kt] = valores_tipo.get(kt, 0) + 1
-
-        # ---------- FILTROS ----------
-        resumen_filtro1 = []
-        resumen_filtro2 = []
-        resumen_filtro3 = []
-        resumen_citas_tramite = []
-        resumen_citas_asignadas = []
-
-        for row in ws.iter_rows(min_row=2, values_only=True):
-            v1 = row[filtro_index1 - 1] if (filtro_index1 - 1) < len(row) else None
-            v2 = row[filtro_index2 - 1] if (filtro_index2 - 1) < len(row) else None
-            v3 = row[filtro_index3 - 1] if (filtro_index3 - 1) < len(row) else None
-            v4 = row[filtro_index4 - 1] if (filtro_index4 - 1) < len(row) else None
-
-            n1 = norm(v1)
-            n2 = norm(v2)
-            n3 = norm(v3)
-            n4 = norm(v4)
-
-            en_proceso = (n1 == norm(valor_filtro1))
-            es_remision = (n3 == norm(tipo_remision))
-            es_cita = (n3 == norm(tipo_cita))
-            es_se_informa = (n4 == norm(valor_filtro4))
-
-            # Remisiones
-            if en_proceso and es_remision:
-                resumen_filtro1.append(extraer_fila(row, COL_FIN_EXCEL))
-
-            if (n2 and norm(valor_filtro2) in n2) and es_remision and en_proceso:
-                resumen_filtro2.append(extraer_fila(row, COL_FIN_EXCEL))
-
-            if es_se_informa and es_remision and en_proceso:
-                resumen_filtro3.append(extraer_fila(row, COL_FIN_EXCEL))
-
-            # Citas
-            if es_cita and en_proceso:
-                resumen_citas_tramite.append(extraer_fila(row, COL_FIN_EXCEL))
-
-            if es_cita and en_proceso and es_se_informa:
-                resumen_citas_asignadas.append(extraer_fila(row, COL_FIN_EXCEL))
-
-        contador1 = len(resumen_filtro1)
-        contador2 = len(resumen_filtro2)
-        contador3 = len(resumen_filtro3)
-        contador_citas_tramite = len(resumen_citas_tramite)
-        contador_citas_asignadas = len(resumen_citas_asignadas)
-
-        # ---------- ACEPTADOS GENERAL ----------
-        aceptados_general = []
-        vistos = set()
-        for f in resumen_filtro3:
-            clave = tuple(str(x) for x in f)
-            if clave not in vistos:
-                vistos.add(clave)
-                aceptados_general.append(f)
-        total_aceptados_general = len(aceptados_general)
-
-        # ---------- Total remisiones ----------
-        claves = set()
-        for f in resumen_filtro1 + resumen_filtro2 + resumen_filtro3:
-            claves.add(tuple(str(x) for x in f))
-        total_remisiones = len(claves)
-
-        # ========== EXCEL DE SALIDA ==========
-        wb_out = openpyxl.Workbook()
-        ws1 = wb_out.active
-        ws1.title = "Remisiones en proceso"
-        ws2 = wb_out.create_sheet("Urgencia Vital")
-        ws3 = wb_out.create_sheet("Remisiones SE INFORMA")
-        ws4 = wb_out.create_sheet("Citas en tramite")
-        ws5 = wb_out.create_sheet("Citas SE INFORMA")
-
-        ws1.append(headers_salida)
-        ws2.append(headers_salida)
-        ws3.append(headers_salida)
-        ws4.append(headers_salida)
-        ws5.append(headers_salida)
-
-        for fila in resumen_filtro1:
-            ws1.append(fila[:COL_FIN_SALIDA])
-        for fila in resumen_filtro2:
-            ws2.append(fila[:COL_FIN_SALIDA])
-        for fila in resumen_filtro3:
-            ws3.append(fila[:COL_FIN_SALIDA])
-        for fila in resumen_citas_tramite:
-            ws4.append(fila[:COL_FIN_SALIDA])
-        for fila in resumen_citas_asignadas:
-            ws5.append(fila[:COL_FIN_SALIDA])
-
-        buffer_out = BytesIO()
-        wb_out.save(buffer_out)
-        resultado_bytes = buffer_out.getvalue()
-
-        # ========== ENTREGA DE TURNO ==========
-        aux_ref = document.getElementById("aux-referencia").value or "(sin especificar)"
-        recibe_aux = document.getElementById("recibe-aux").value or "(sin especificar)"
-        fecha_hora = fecha_actual_formateada()
-
-        lineas = []
-        lineas.append("*Entrega de turno* " + fecha_hora)
-        lineas.append("")
-        lineas.append("*Aux. Referencia:* " + aux_ref)
-        lineas.append("")
-        lineas.append("*Total remisiones:* " + str(total_remisiones))
-        lineas.append("")
-        lineas.append("*Aceptados:* " + str(total_aceptados_general))
-        lineas.append("")
-        for f in aceptados_general[:50]:
-            lineas.append(formatear_fila(f[:COL_FIN_SALIDA]))
-
-        lineas.append("")
-        lineas.append("")
-        lineas.append("*URGENCIAS VITAL:* " + str(contador2).zfill(2))
-        lineas.append("")
-        for f in resumen_filtro2[:50]:
-            lineas.append(formatear_fila(f[:COL_FIN_SALIDA]))
-
-        lineas.append("")
-        lineas.append("")
-        # CITAS EN TRAMITE: solo el número total
-        lineas.append("*CITAS EN TRAMITE:* " + str(contador_citas_tramite))
-
-        lineas.append("")
-        lineas.append("")
-        lineas.append("*PACIENTES CON CITA ASIGNADAS:* " + str(contador_citas_asignadas))
-        lineas.append("")
-        for f in resumen_citas_asignadas[:50]:
-            lineas.append(formatear_fila(f[:COL_FIN_SALIDA]))
-
-        lineas.append("")
-        lineas.append("")
-        lineas.append("*CORREO SIN TRAMITES POR APERTURA:*")
-        lineas.append("")
-        lineas.append("*HOSVITAL PACIENTES  PARA  INICIO DE CONTRAREMISION:* 0")
-        lineas.append("")
-        lineas.append("*Recibe Aux Referencia:* " + recibe_aux)
-
-        texto_turno = "\n".join(lineas)
-        set_turno(texto_turno)
-
-        # ========== ESTADÍSTICAS ==========
-        stats_el = document.getElementById("stats")
-        while stats_el.firstChild:
-            stats_el.removeChild(stats_el.firstChild)
-
-        crear_stat(stats_el, contador1, "Remisiones en proceso")
-        crear_stat(stats_el, contador2, "Urgencia Vital (En proceso)", "verde")
-        crear_stat(stats_el, contador3, "Remisiones SE INFORMA", "naranja")
-        crear_stat(stats_el, contador_citas_tramite, "Citas en trámite", "morado")
-        crear_stat(stats_el, contador_citas_asignadas, "Citas asignadas (SE INFORMA)", "morado")
-        stats_el.style.display = "flex"
-
-        # ========== DIAGNÓSTICO ==========
-        lineas_debug = []
-        lineas_debug.append("=== DIAGNÓSTICO ===")
-        lineas_debug.append("Índice col ESTADO DEL TRAMITE: " + str(idx_estado_tramite) + "  (" + str(headers_full[idx_estado_tramite-1]) + ")")
-        lineas_debug.append("Índice col TIPO DE TRAMITE: " + str(idx_tipo_tramite))
-        lineas_debug.append("")
-        lineas_debug.append("Valores ÚNICOS en TIPO DE TRAMITE (normalizados):")
-        for k, c in sorted(valores_tipo.items(), key=lambda x: -x[1]):
-            lineas_debug.append("  ['" + k + "']  →  " + str(c) + " filas")
-        lineas_debug.append("")
-        lineas_debug.append("Valores ÚNICOS en ESTADO DEL TRAMITE (normalizados):")
-        for k, c in sorted(valores_estado.items(), key=lambda x: -x[1]):
-            lineas_debug.append("  ['" + k + "']  →  " + str(c) + " filas")
-        lineas_debug.append("")
-        lineas_debug.append("=== CONTADORES (todos exigen 'Tramite en proceso') ===")
-        lineas_debug.append("Remisiones en proceso: " + str(contador1))
-        lineas_debug.append("Urgencia Vital: " + str(contador2))
-        lineas_debug.append("Remisiones SE INFORMA (Aceptados): " + str(contador3))
-        lineas_debug.append("Citas en trámite: " + str(contador_citas_tramite))
-        lineas_debug.append("Citas asignadas (SE INFORMA): " + str(contador_citas_asignadas))
-        lineas_debug.append("")
-        lineas_debug.append("--- Primeros 5 citas asignadas ---")
-        for r in resumen_citas_asignadas[:5]:
-            lineas_debug.append(str(r[:COL_FIN_SALIDA]))
-
-        set_output("\n".join(lineas_debug))
-        set_status(
-            "✅ Procesado. " + str(total_remisiones) + " remisiones, "
-            + str(total_aceptados_general) + " aceptados, "
-            + str(contador_citas_tramite) + " citas en trámite, "
-            + str(contador_citas_asignadas) + " citas asignadas.",
-            "ok"
-        )
-        document.getElementById("download-btn").style.display = "inline-block"
-        document.getElementById("copy-btn").style.display = "inline-block"
-
-    except Exception as e:
-        set_status("❌ Error: " + str(e), "error")
-        set_output(str(e))
-        set_turno("Error: " + str(e))
-        console.error(str(e))
-    finally:
-        mostrar_loading(False)
-
-
-# ---------- Descargar Excel ----------
-def descargar_resultado(event=None):
-    global resultado_bytes
-    if resultado_bytes is None:
-        return
-    try:
-        import js
-        arr = Uint8Array.new(len(resultado_bytes))
-        arr.assign(resultado_bytes)
-        blob = js.Blob.new([arr], {"type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"})
-        url = window.URL.createObjectURL(blob)
-        a = document.createElement("a")
-        a.href = url
-        a.download = "resultado_filtrado.xlsx"
-        document.body.appendChild(a)
-        a.click()
-        document.body.removeChild(a)
-        window.URL.revokeObjectURL(url)
-    except Exception as e:
-        set_status("❌ Error al descargar: " + str(e), "error")
-        console.error(str(e))
-
-
-# ---------- Copiar al portapapeles ----------
-async def copiar_entrega(event=None):
-    global texto_turno
-    if not texto_turno:
-        return
-    try:
-        nav = window.navigator
-        await nav.clipboard.writeText(texto_turno)
-        set_status("📋 Entrega copiada al portapapeles.", "ok")
-    except Exception as e:
-        try:
-            el = document.getElementById("turno")
-            range_ = document.createRange()
-            range_.selectNodeContents(el)
-            sel = window.getSelection()
-            sel.removeAllRanges()
-            sel.addRange(range_)
-            set_status("⚠️ No se pudo copiar. Texto seleccionado: pulsa Ctrl+C.", "loading")
-        except Exception as e2:
-            set_status("❌ No se pudo copiar: " + str(e), "error")
-
-
-# ---------- Registrar eventos ----------
-document.getElementById("process-btn").addEventListener("click", create_proxy(procesar_archivo))
-document.getElementById("download-btn").addEventListener("click", create_proxy(descargar_resultado))
-document.getElementById("copy-btn").addEventListener("click", create_proxy(copiar_entrega))
-
-console.log("✅ App lista. Botones registrados.")
+        <div class="stat animate-in delay-3">
+            <div class="stat-number">100%</div>
+            <div class="stat-label">Privado</div>
+        </div>
+        <div class="stat animate-in delay-4">
+            <div class="stat-number">0</div>
+            <div class="stat-label">Servidores</div>
+        </div>
+        <div class="stat animate-in delay-4">
+            <div class="stat-number">∞</div>
+            <div class="stat-label">Uso libre</div>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <p>💡 Todo el procesamiento es <strong>local en tu navegador</strong> — ninguno de tus datos sale de tu equipo.</p>
+    </footer>
+
+    <script>
+        // Mostrar fecha y hora en el header
+        function updateTime() {
+            const now = new Date();
+            const opciones = { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            };
+            const texto = now.toLocaleDateString('es-CO', opciones);
+            document.getElementById('headerTime').textContent = 
+                texto.charAt(0).toUpperCase() + texto.slice(1);
+        }
+        updateTime();
+        setInterval(updateTime, 60000); // Actualizar cada minuto
     </script>
-
 </body>
 </html>
