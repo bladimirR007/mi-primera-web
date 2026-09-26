@@ -16,7 +16,6 @@
             background: #f6f8fa;
         }
         h1 { margin-bottom: 0.3rem; }
-        h2 { margin-top: 0; font-size: 1.1rem; }
         .card {
             background: white;
             border: 1px solid #d0d7de;
@@ -51,17 +50,6 @@
         #download-btn:hover { background: #0250a3; }
         #copy-btn { background: #6f42c1; }
         #copy-btn:hover { background: #5a32a3; }
-        .output {
-            background: #0d1117;
-            color: #c9d1d9;
-            padding: 1rem;
-            border-radius: 8px;
-            font-family: 'SF Mono', Consolas, monospace;
-            font-size: 0.88rem;
-            white-space: pre-wrap;
-            max-height: 500px;
-            overflow-y: auto;
-        }
         .turno {
             background: #ffffff;
             color: #24292e;
@@ -134,7 +122,7 @@
 </head>
 <body>
 
-    <h1>📊 Filtro de Trámites</h1>
+    <h1>📊 ENTREGA DE TURNO</h1>
     <p>Filtra registros y genera una <strong>entrega de turno</strong> formateada.</p>
 
     <div class="card">
@@ -144,11 +132,11 @@
         <div class="config-row">
             <label>
                 Aux. Referencia (quien entrega):
-                <input type="text" id="aux-referencia" placeholder="Ej: LIZ CABRILES" />
+                <input type="text" id="aux-referencia" value="BLADIMIR REALES" />
             </label>
             <label>
                 Recibe Aux Referencia:
-                <input type="text" id="recibe-aux" placeholder="Ej: BLADIMIR REALES" />
+                <input type="text" id="recibe-aux"/>
             </label>
         </div>
 
@@ -169,13 +157,8 @@
     </div>
 
     <div class="card">
-        <h2>📝 Entrega de turno</h2>
+        <h2 style="margin:0 0 0.8rem 0; font-size: 1.1rem;">📝 Entrega de turno</h2>
         <div id="turno" class="turno">Aquí verás la entrega de turno generada.</div>
-    </div>
-
-    <div class="card">
-        <h2>🔍 Detalle / depuración</h2>
-        <div id="output" class="output">Aquí verás los registros filtrados y el diagnóstico.</div>
     </div>
 
     <py-config>
@@ -198,10 +181,6 @@ def set_status(msg, tipo="ok"):
     el = document.getElementById("status")
     el.innerText = msg
     el.className = "status " + tipo
-
-
-def set_output(msg):
-    document.getElementById("output").innerText = msg
 
 
 def set_turno(msg):
@@ -259,7 +238,7 @@ def formatear_fila(fila):
         if v is None or str(v).strip() == "":
             continue
         partes.append(str(v).strip())
-    # Salto de línea final para separar visualmente cada paciente
+    # Salto de línea final para separar cada paciente
     return "\t".join(partes) + "\n"
 
 
@@ -269,7 +248,6 @@ async def procesar_archivo(event=None):
 
     mostrar_loading(True)
     set_status("⏳ Procesando archivo...", "loading")
-    set_output("Trabajando...")
     set_turno("Generando...")
     document.getElementById("download-btn").style.display = "none"
     document.getElementById("copy-btn").style.display = "none"
@@ -279,7 +257,6 @@ async def procesar_archivo(event=None):
         bytes_io = await leer_archivo()
         if bytes_io is None:
             set_status("⚠️ Selecciona primero un archivo Excel.", "error")
-            set_output("")
             set_turno("")
             mostrar_loading(False)
             return
@@ -296,10 +273,8 @@ async def procesar_archivo(event=None):
         valor_filtro2 = "URGENCIA VITAL"
 
         columna_filtro3 = "TIPO DE TRAMITE"
-        valor_filtro3 = "REMISION"
 
         columna_filtro4 = "ESTADO DEL TRAMITE"
-        valor_filtro4 = "SE INFORMA"
 
         tipo_remision = "REMISION"
         tipo_cita = "CITA"
@@ -339,35 +314,18 @@ async def procesar_archivo(event=None):
         idx_estado_tramite = filtro_index4
         idx_tipo_tramite = filtro_index3
 
-        if idx_estado_tramite > COL_FIN_EXCEL:
-            raise ValueError(
-                "La columna '" + columna_filtro4 + "' está en la posición "
-                + str(idx_estado_tramite) + " (más allá de Z). Amplía COL_FIN_EXCEL."
-            )
-
         def extraer_fila(row, limite):
             fila = []
             for i in range(1, limite + 1):
                 fila.append(row[i - 1] if (i - 1) < len(row) else None)
             return fila
 
-        # ---------- Diagnóstico ----------
-        valores_estado = {}
-        valores_tipo = {}
-        for row in ws.iter_rows(min_row=2, values_only=True):
-            vs = row[idx_estado_tramite - 1] if (idx_estado_tramite - 1) < len(row) else None
-            vt = row[idx_tipo_tramite - 1] if (idx_tipo_tramite - 1) < len(row) else None
-            ks = norm(vs)
-            kt = norm(vt)
-            valores_estado[ks] = valores_estado.get(ks, 0) + 1
-            valores_tipo[kt] = valores_tipo.get(kt, 0) + 1
-
         # ---------- FILTROS ----------
-        resumen_filtro1 = []
-        resumen_filtro2 = []
-        resumen_filtro3 = []
-        resumen_citas_tramite = []
-        resumen_citas_asignadas = []
+        resumen_filtro1 = []              # REMISION + En proceso
+        resumen_filtro2 = []              # URGENCIA VITAL + REMISION + En proceso
+        resumen_remisiones_con_estado = [] # REMISION + En proceso + ESTADO no vacío
+        resumen_citas_tramite = []        # CITA + En proceso
+        resumen_citas_con_estado = []     # CITA + En proceso + ESTADO no vacío
 
         for row in ws.iter_rows(min_row=2, values_only=True):
             v1 = row[filtro_index1 - 1] if (filtro_index1 - 1) < len(row) else None
@@ -383,7 +341,8 @@ async def procesar_archivo(event=None):
             en_proceso = (n1 == norm(valor_filtro1))
             es_remision = (n3 == norm(tipo_remision))
             es_cita = (n3 == norm(tipo_cita))
-            es_se_informa = (n4 == norm(valor_filtro4))
+            # "ESTADO no vacío" = la celda tiene cualquier contenido
+            estado_con_dato = (n4 != "")
 
             # Remisiones
             if en_proceso and es_remision:
@@ -392,26 +351,26 @@ async def procesar_archivo(event=None):
             if (n2 and norm(valor_filtro2) in n2) and es_remision and en_proceso:
                 resumen_filtro2.append(extraer_fila(row, COL_FIN_EXCEL))
 
-            if es_se_informa and es_remision and en_proceso:
-                resumen_filtro3.append(extraer_fila(row, COL_FIN_EXCEL))
+            if es_remision and en_proceso and estado_con_dato:
+                resumen_remisiones_con_estado.append(extraer_fila(row, COL_FIN_EXCEL))
 
             # Citas
             if es_cita and en_proceso:
                 resumen_citas_tramite.append(extraer_fila(row, COL_FIN_EXCEL))
 
-            if es_cita and en_proceso and es_se_informa:
-                resumen_citas_asignadas.append(extraer_fila(row, COL_FIN_EXCEL))
+            if es_cita and en_proceso and estado_con_dato:
+                resumen_citas_con_estado.append(extraer_fila(row, COL_FIN_EXCEL))
 
         contador1 = len(resumen_filtro1)
         contador2 = len(resumen_filtro2)
-        contador3 = len(resumen_filtro3)
+        contador3 = len(resumen_remisiones_con_estado)
         contador_citas_tramite = len(resumen_citas_tramite)
-        contador_citas_asignadas = len(resumen_citas_asignadas)
+        contador_citas_asignadas = len(resumen_citas_con_estado)
 
-        # ---------- ACEPTADOS GENERAL ----------
+        # ---------- ACEPTADOS (remisiones con ESTADO no vacío) ----------
         aceptados_general = []
         vistos = set()
-        for f in resumen_filtro3:
+        for f in resumen_remisiones_con_estado:
             clave = tuple(str(x) for x in f)
             if clave not in vistos:
                 vistos.add(clave)
@@ -420,7 +379,7 @@ async def procesar_archivo(event=None):
 
         # ---------- Total remisiones ----------
         claves = set()
-        for f in resumen_filtro1 + resumen_filtro2 + resumen_filtro3:
+        for f in resumen_filtro1 + resumen_filtro2 + resumen_remisiones_con_estado:
             claves.add(tuple(str(x) for x in f))
         total_remisiones = len(claves)
 
@@ -429,9 +388,9 @@ async def procesar_archivo(event=None):
         ws1 = wb_out.active
         ws1.title = "Remisiones en proceso"
         ws2 = wb_out.create_sheet("Urgencia Vital")
-        ws3 = wb_out.create_sheet("Remisiones SE INFORMA")
+        ws3 = wb_out.create_sheet("Remisiones con estado")
         ws4 = wb_out.create_sheet("Citas en tramite")
-        ws5 = wb_out.create_sheet("Citas SE INFORMA")
+        ws5 = wb_out.create_sheet("Citas con estado")
 
         ws1.append(headers_salida)
         ws2.append(headers_salida)
@@ -443,11 +402,11 @@ async def procesar_archivo(event=None):
             ws1.append(fila[:COL_FIN_SALIDA])
         for fila in resumen_filtro2:
             ws2.append(fila[:COL_FIN_SALIDA])
-        for fila in resumen_filtro3:
+        for fila in resumen_remisiones_con_estado:
             ws3.append(fila[:COL_FIN_SALIDA])
         for fila in resumen_citas_tramite:
             ws4.append(fila[:COL_FIN_SALIDA])
-        for fila in resumen_citas_asignadas:
+        for fila in resumen_citas_con_estado:
             ws5.append(fila[:COL_FIN_SALIDA])
 
         buffer_out = BytesIO()
@@ -487,7 +446,7 @@ async def procesar_archivo(event=None):
         lineas.append("")
         lineas.append("*PACIENTES CON CITA ASIGNADAS:* " + str(contador_citas_asignadas))
         lineas.append("")
-        for f in resumen_citas_asignadas[:50]:
+        for f in resumen_citas_con_estado[:50]:
             lineas.append(formatear_fila(f[:COL_FIN_SALIDA]))
 
         lineas.append("")
@@ -508,42 +467,16 @@ async def procesar_archivo(event=None):
 
         crear_stat(stats_el, contador1, "Remisiones en proceso")
         crear_stat(stats_el, contador2, "Urgencia Vital (En proceso)", "verde")
-        crear_stat(stats_el, contador3, "Remisiones SE INFORMA", "naranja")
+        crear_stat(stats_el, contador3, "Remisiones con estado", "naranja")
         crear_stat(stats_el, contador_citas_tramite, "Citas en trámite", "morado")
-        crear_stat(stats_el, contador_citas_asignadas, "Citas asignadas (SE INFORMA)", "morado")
+        crear_stat(stats_el, contador_citas_asignadas, "Citas con estado", "morado")
         stats_el.style.display = "flex"
 
-        # ========== DIAGNÓSTICO ==========
-        lineas_debug = []
-        lineas_debug.append("=== DIAGNÓSTICO ===")
-        lineas_debug.append("Índice col ESTADO DEL TRAMITE: " + str(idx_estado_tramite) + "  (" + str(headers_full[idx_estado_tramite-1]) + ")")
-        lineas_debug.append("Índice col TIPO DE TRAMITE: " + str(idx_tipo_tramite))
-        lineas_debug.append("")
-        lineas_debug.append("Valores ÚNICOS en TIPO DE TRAMITE (normalizados):")
-        for k, c in sorted(valores_tipo.items(), key=lambda x: -x[1]):
-            lineas_debug.append("  ['" + k + "']  →  " + str(c) + " filas")
-        lineas_debug.append("")
-        lineas_debug.append("Valores ÚNICOS en ESTADO DEL TRAMITE (normalizados):")
-        for k, c in sorted(valores_estado.items(), key=lambda x: -x[1]):
-            lineas_debug.append("  ['" + k + "']  →  " + str(c) + " filas")
-        lineas_debug.append("")
-        lineas_debug.append("=== CONTADORES (todos exigen 'Tramite en proceso') ===")
-        lineas_debug.append("Remisiones en proceso: " + str(contador1))
-        lineas_debug.append("Urgencia Vital: " + str(contador2))
-        lineas_debug.append("Remisiones SE INFORMA (Aceptados): " + str(contador3))
-        lineas_debug.append("Citas en trámite: " + str(contador_citas_tramite))
-        lineas_debug.append("Citas asignadas (SE INFORMA): " + str(contador_citas_asignadas))
-        lineas_debug.append("")
-        lineas_debug.append("--- Primeros 5 citas asignadas ---")
-        for r in resumen_citas_asignadas[:5]:
-            lineas_debug.append(str(r[:COL_FIN_SALIDA]))
-
-        set_output("\n".join(lineas_debug))
         set_status(
             "✅ Procesado. " + str(total_remisiones) + " remisiones, "
             + str(total_aceptados_general) + " aceptados, "
             + str(contador_citas_tramite) + " citas en trámite, "
-            + str(contador_citas_asignadas) + " citas asignadas.",
+            + str(contador_citas_asignadas) + " citas con estado.",
             "ok"
         )
         document.getElementById("download-btn").style.display = "inline-block"
@@ -551,7 +484,6 @@ async def procesar_archivo(event=None):
 
     except Exception as e:
         set_status("❌ Error: " + str(e), "error")
-        set_output(str(e))
         set_turno("Error: " + str(e))
         console.error(str(e))
     finally:
